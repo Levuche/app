@@ -85,10 +85,19 @@ jobs:
         id: upload
         run: |
           set -o pipefail
-          npx wrangler versions upload --env dev \
+          if ! npx wrangler versions upload --env dev \
             --preview-alias "pr-$PR_NUMBER" \
             --tag "pr-$PR_NUMBER" \
-            --message "PR #$PR_NUMBER at ${HEAD_SHA:0:7}" | tee upload.log
+            --message "PR #$PR_NUMBER at ${HEAD_SHA:0:7}" 2>&1 | tee upload.log; then
+            # Preview versions need the dev Worker, which the first merge into
+            # dev creates (deploy.yml). Until then there's nothing to preview.
+            if grep -q 'Worker that does not yet exist' upload.log; then
+              echo "::warning::No preview yet: the dev Worker (levuche-app-dev) is created by the first merge into dev. Pull requests after that get preview links."
+              echo "url=" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            exit 1
+          fi
           url=$(sed -n 's/^.*Version Preview Alias URL: \(https:[^ ]*\).*$/\1/p' upload.log | tail -n 1)
           if [ -z "$url" ]; then
             echo "::warning::The version uploaded but Cloudflare gave no preview link. Check that the account has a workers.dev subdomain and that the dev Worker was deployed with preview_urls on (docs/DEPLOY.md)."
