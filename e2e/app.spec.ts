@@ -39,7 +39,14 @@ test('stays out of search engines and sends the security headers', async ({
 }) => {
   const response = await request.get('/');
   const headers = response.headers();
-  expect(headers['x-robots-tag']).toBe('noindex, nofollow');
+  // Cloudflare puts its own `X-Robots-Tag: noindex` on workers.dev preview
+  // links in place of the app's, so a pull request preview shows only that.
+  // Every other host must send the app's own header.
+  if (new URL(response.url()).hostname.endsWith('.workers.dev')) {
+    expect(headers['x-robots-tag']).toContain('noindex');
+  } else {
+    expect(headers['x-robots-tag']).toBe('noindex, nofollow');
+  }
   expect(headers['x-frame-options']).toBe('DENY');
   expect(headers['x-content-type-options']).toBe('nosniff');
   expect(headers['x-powered-by']).toBeUndefined();
