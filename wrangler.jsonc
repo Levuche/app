@@ -1,0 +1,36 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // app.levuche.com on Cloudflare Workers, built with OpenNext and deployed
+  // by GitHub Actions. Setup, domains and secrets: docs/DEPLOY.md. No
+  // secrets belong in this file.
+  "name": "levuche-app",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  // Next.js inlines the next-themes no-flash script into the HTML, where
+  // esbuild's __name helper does not exist, so keep_names stays off.
+  "keep_names": false,
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS",
+  },
+  "observability": { "enabled": true },
+  // Production: app.levuche.com only (no workers.dev address). The
+  // levuche.com zone is on the same Cloudflare account as the website.
+  "routes": [{ "pattern": "app.levuche.com", "custom_domain": true }],
+  "workers_dev": false,
+  // Keep runtime values set in the dashboard on each deploy.
+  "keep_vars": true,
+  "env": {
+    // The dev app: every push to the dev branch deploys here
+    // (.github/workflows/deploy.yml), reading the Buildbase development
+    // environment. Pull requests into dev upload preview versions of this
+    // Worker (.github/workflows/preview.yml), which need preview_urls on.
+    "dev": {
+      "name": "levuche-app-dev",
+      "routes": [{ "pattern": "app-dev.levuche.com", "custom_domain": true }],
+      "workers_dev": false,
+      "preview_urls": true,
+    },
+  },
+}
