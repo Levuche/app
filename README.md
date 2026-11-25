@@ -14,8 +14,8 @@ the dashboard come next; see the open issues.
 
 - Next.js 16 and React 19, on Cloudflare Workers through OpenNext
 - Tailwind CSS 4 with the Levuche product theme (design tokens v1.1, light
-  and dark), which moves to [@levuche/kit](https://github.com/Levuche/kit)
-  once kit's first release is tagged
+  and dark) from [@levuche/kit](https://github.com/Levuche/kit), installed by
+  its release tag
 - Playwright with axe for end-to-end and accessibility tests
 - Buildbase for sign-in, billing and selling (coming with sign-in)
 

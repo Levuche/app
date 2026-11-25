@@ -22,6 +22,7 @@
     "e2e": "playwright test"
   },
   "dependencies": {
+    "@levuche/kit": "github:Levuche/kit#v0.1.0",
     "next": "16.4.6",
     "next-themes": "^0.4.6",
     "react": "19.2.3",

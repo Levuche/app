@@ -1,6 +1,7 @@
 @import 'tailwindcss';
-/* Becomes @import '@levuche/kit/theme.css'; once kit v0.1.0 is tagged. */
-@import './theme.css';
+/* The product theme (design tokens --lv-*, light and dark, and the size
+   presets), shared with levuche.com through @levuche/kit. */
+@import '@levuche/kit/theme.css';
 
 html {
   background: var(--lv-bg);
