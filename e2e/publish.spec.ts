@@ -60,6 +60,9 @@ async function publish(page: Page, id: string, note = '') {
   await page.goto(`/sites/${id}/publish`);
   if (note) await page.getByLabel('Note (optional)').fill(note);
   await page.getByRole('button', { name: 'Publish', exact: true }).click();
+  // Wait for the answer, so a test that goes elsewhere next doesn't cut the
+  // publish short.
+  await page.waitForURL(/[?&]done=/);
 }
 
 test('a draft that needs a fix is listed, with a link to the block', async ({

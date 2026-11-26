@@ -7,6 +7,9 @@ import { expect, type Page } from '@playwright/test';
  * read or a control with no name.
  */
 export async function expectNoA11yViolations(page: Page, include?: string) {
+  // The page's title can arrive just after its content; wait for it, so axe
+  // checks the finished page.
+  await expect(page).toHaveTitle(/\S/);
   let builder = new AxeBuilder({ page }).withTags([
     'wcag2a',
     'wcag2aa',
