@@ -27,8 +27,9 @@ own Git builds (Workers Builds), or every push would deploy twice.
 
 1. **Cloudflare API token.** The website's token works if it covers the
    Levuche account and the `levuche.com` zone (Workers Scripts: Edit,
-   Account Settings: Read, and on the zone Workers Routes: Edit, DNS: Edit,
-   Zone: Read). Or create one with the same scopes.
+   D1: Edit, Account Settings: Read, and on the zone Workers Routes: Edit,
+   DNS: Edit, Zone: Read). Or create one with the same scopes. D1: Edit lets
+   the deploy apply database migrations ([DATABASE.md](DATABASE.md)).
 2. **GitHub settings,** in `Levuche/app` > **Settings** > **Secrets and
    variables** > **Actions**:
    - repository secret `CLOUDFLARE_API_TOKEN`: the token;
