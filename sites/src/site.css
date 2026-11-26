@@ -1,0 +1,26 @@
+/* Creator sites' one stylesheet, inlined into every page the sites Worker
+   serves (sites/build-css.mjs builds it). Only the classes the page blocks
+   and the page frame use are kept. */
+@import 'tailwindcss' source(none);
+@import '@levuche/kit/theme.css';
+@import '@levuche/ui/tokens.css';
+@source '../../node_modules/@levuche/ui/src';
+@source '../../src/components/creator-page.tsx';
+@source '../../src/components/page-blocks.tsx';
+@source '../../src/components/back-to-top.tsx';
+@source './';
+
+html {
+  background: var(--lv-bg);
+  color: var(--lv-text);
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+:focus-visible {
+  outline: 2px solid var(--lv-primary);
+  outline-offset: 2px;
+}
