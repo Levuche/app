@@ -12,6 +12,8 @@ export default defineConfig([
     'next-env.d.ts',
     '.open-next/**',
     '.wrangler/**',
+    'sites/.wrangler/**',
+    'sites/generated/**',
     'cloudflare-env.d.ts',
     'playwright-report/**',
     'test-results/**',

@@ -6,9 +6,11 @@ import { BILLING_VIEW } from '@/lib/billing';
 import { hasDraftChanges } from '@/lib/db';
 import { siteAddress } from '@/lib/handle';
 import { buttonClasses } from '@/lib/button';
+import { pauseNotice } from '@/lib/moderation';
 import { SITE_STATUS } from '@/lib/site-status';
 import { setSiteOffline } from './actions';
-import { getSite, SITE_EDIT } from '@/lib/sites';
+import { PausedNotice } from './paused-notice';
+import { database, getSite, SITE_EDIT } from '@/lib/sites';
 
 type Props = { params: Promise<{ workspaceId: string }> };
 
@@ -32,10 +34,21 @@ export default async function SitePage({ params }: Props) {
   const address = siteAddress(site.handle);
   const status =
     SITE_STATUS[site.status === 'deleted' ? 'offline' : site.status];
+  const paused =
+    site.status === 'paused'
+      ? await pauseNotice(await database(), site.workspaceId, site.id)
+      : null;
 
   return (
     <main className="px-gutter max-w-layout mx-auto flex w-full flex-1 flex-col gap-6 py-12">
       <h1 className="text-h1 m-0 break-words">{site.name}</h1>
+      {paused ? (
+        <PausedNotice
+          workspaceId={site.workspaceId}
+          notice={paused}
+          canAppeal={can(SITE_EDIT)}
+        />
+      ) : null}
 
       <section
         aria-labelledby="site-card"

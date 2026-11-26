@@ -2,8 +2,10 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { requireUser } from '@/lib/buildbase';
 import { siteStore } from '@/lib/db';
-import { database, getSite } from '@/lib/sites';
+import { appeal } from '@/lib/moderation';
+import { database, getSite, SITE_EDIT } from '@/lib/sites';
 
 /**
  * Takes the site at /sites/<workspace id> offline, or puts it back live.
@@ -24,5 +26,28 @@ export async function setSiteOffline(form: FormData) {
     site.id,
     offline
   );
+  revalidatePath(`/sites/${workspaceId}`);
+}
+
+/**
+ * Asks the Levuche team to look again at a paused site (#33), once per
+ * pause. Admins and editors can, checked with Buildbase on every call.
+ */
+export async function askToLookAgain(form: FormData) {
+  const workspaceId = String(form.get('workspaceId') ?? '');
+  const [{ site, can }, user] = await Promise.all([
+    getSite(workspaceId),
+    requireUser(),
+  ]);
+  if (!can(SITE_EDIT))
+    throw new Error(
+      'Only a site’s admins and editors can ask us to look again.'
+    );
+  await appeal(await database(), {
+    workspaceId,
+    siteId: site.id,
+    note: String(form.get('note') ?? ''),
+    actor: user.id,
+  });
   revalidatePath(`/sites/${workspaceId}`);
 }

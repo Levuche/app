@@ -140,6 +140,30 @@ by the app. It reads the app's database and never writes to it.
 Run it locally with `npm run sites:dev` after `npm run sites:css`; its
 tests are in `sites/src/serve.test.ts` (`npm test`).
 
+## Reports and pauses
+
+Every live site ends with "Report this page", which opens
+`/report/<handle>` on the app (sites run no forms of their own). Anyone can
+report, signed in or not, choosing spam or a scam, pretending to be someone
+else, hate or harassment, adult content, someone else's copyrighted work,
+or something else, with optional details. One report per site per visitor
+a day and ten a day in all, counted by a daily hash of the visitor's address,
+never the address itself. Each report keeps a copy of the live version at
+that moment.
+
+`/staff` is the Levuche team's screen, "not found" to anyone whose
+Buildbase user id isn't in the `STAFF_USER_IDS` secret
+([DEPLOY.md](DEPLOY.md)). It lists open reports by site, opens the copy
+each one was made against, pauses a site with a reason and a note the
+creator sees, closes reports to keep a site up, unpauses, and shows the
+log. Every pause, unpause, closed report and appeal is logged in
+`moderation_log` and never changed.
+
+A paused site's visitors see that it isn't available. Its creator sees why
+on the overview, and an admin or editor can ask the team to look again,
+once per pause. Unpausing gives back the status the site had (live,
+offline or not live yet).
+
 ## Roles and checks
 
 Set up in the Buildbase development environment (Settings > Workspaces);

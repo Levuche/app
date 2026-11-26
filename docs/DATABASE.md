@@ -31,17 +31,20 @@ migration reaches it only once the pull request is merged.
 ## Tables
 
 From `migrations/0001_sites_pages_versions.sql`, `0002_block_order.sql`
-for the order of blocks, and `0003_preview_link.sql` for a site's private
-preview link (`sites.preview_token`):
+for the order of blocks, `0003_preview_link.sql` for a site's private
+preview link (`sites.preview_token`), and `0004_reports_and_pauses.sql`
+for reports and the team's pauses:
 
-| Table      | One row per                                                                          |
-| ---------- | ------------------------------------------------------------------------------------ |
-| `sites`    | creator site (one per Buildbase workspace), with its status and live version         |
-| `handles`  | name on levuche.page: a site's current one, an old one held for a while, or reserved |
-| `pages`    | page of a site's draft: address, title, order, home, hidden, removed at next publish |
-| `blocks`   | block on a page: its @levuche/ui type, settings and reading order                    |
-| `layouts`  | page and screen (phone, tablet, desktop): where each block sits on the grid          |
-| `versions` | publish: the whole site as published, with a note, who published it and when         |
+| Table            | One row per                                                                          |
+| ---------------- | ------------------------------------------------------------------------------------ |
+| `sites`          | creator site (one per Buildbase workspace), with its status and live version         |
+| `handles`        | name on levuche.page: a site's current one, an old one held for a while, or reserved |
+| `pages`          | page of a site's draft: address, title, order, home, hidden, removed at next publish |
+| `blocks`         | block on a page: its @levuche/ui type, settings and reading order                    |
+| `layouts`        | page and screen (phone, tablet, desktop): where each block sits on the grid          |
+| `versions`       | publish: the whole site as published, with a note, who published it and when         |
+| `reports`        | visitor's report: reason, details and a copy of the live version at that moment      |
+| `moderation_log` | pause, unpause, closed reports or creator's appeal: who, when and why                |
 
 A site's status is one of `unpublished`, `live`, `offline` (taken down by
 the creator), `paused` (by the Levuche team) or `deleted`. Any change to a
@@ -49,8 +52,7 @@ page, block or layout moves the site's `draft_changed_at` (by triggers), so
 a live site whose draft is newer than its live version shows as "live with
 draft changes".
 
-Form entries, short links and reports get their own tables in later
-migrations.
+Form entries and short links get their own tables in later migrations.
 
 ## Reading and changing data
 
@@ -61,7 +63,10 @@ not found and can't be changed. Don't query the tables by id alone
 anywhere else. Two reads are the exception: `takenHandles(db, handles)`,
 which answers only which of some public addresses are in use, for the
 new-site form's live check, and `draftByPreviewToken(db, token)`, where the
-private preview link's token is the key.
+private preview link's token is the key. Reports and pauses
+(`src/lib/moderation.ts`) are the other exception: the public report form
+reads only whether a handle is live, the staff screens read every site's
+reports, and a creator's view of a pause is kept to their workspace.
 
 Publishing copies the whole draft (pages, blocks, layouts and theme) into
 the next row of `versions` and points `live_version` at it, in one batch;
