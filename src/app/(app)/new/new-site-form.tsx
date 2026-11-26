@@ -42,7 +42,7 @@ function useHandleCheck(handle: string) {
 }
 
 const field =
-  'min-h-control border-lv-border bg-lv-card text-lv-text w-full rounded-xl border-2 px-4 text-base focus-visible:border-lv-primary';
+  'min-h-control border-lv-border bg-lv-card text-lv-text w-full rounded-xl border-2 px-3 text-base focus-visible:border-lv-primary sm:text-sm';
 
 /**
  * The site's name and address. Works before the page's script loads, and
