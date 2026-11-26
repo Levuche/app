@@ -62,6 +62,13 @@ export const getSite = cache(async (workspaceId: string) => {
   return {
     site: withWorkspace(site, workspace),
     role: me.role,
+    /** The workspace's members' names, by Buildbase user id. */
+    memberNames: new Map(
+      (workspace.users ?? []).map((user) => [
+        (user as { id?: string }).id ?? user._id,
+        user.name,
+      ])
+    ),
     /** A permission as Buildbase resolves it; admins hold every one. */
     can: (permission: string) =>
       me.role === 'admin' || me.permissions.includes(permission),

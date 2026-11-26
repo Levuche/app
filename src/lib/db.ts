@@ -18,6 +18,8 @@ export interface Site {
   liveVersion: number | null;
   /** Newer than the live version's publish time: live with draft changes. */
   draftChangedAt: string;
+  /** When the live version was published; null before the first publish. */
+  livePublishedAt: string | null;
   createdAt: string;
 }
 
@@ -49,7 +51,9 @@ type PageRow = Omit<Page, 'isHome' | 'hidden' | 'removed'> &
   Record<'isHome' | 'hidden' | 'removed', 0 | 1>;
 
 const SITES = `SELECT s.id, h.handle, s.status, s.live_version AS liveVersion,
-  s.draft_changed_at AS draftChangedAt, s.created_at AS createdAt
+  s.draft_changed_at AS draftChangedAt, s.created_at AS createdAt,
+  (SELECT v.published_at FROM versions v WHERE v.site_id = s.id
+   AND v.number = s.live_version) AS livePublishedAt
   FROM sites s JOIN handles h ON h.site_id = s.id AND h.kind = 'site'
   WHERE s.workspace_id = ?1`;
 
@@ -57,6 +61,112 @@ const OWN_SITE = 'site_id IN (SELECT id FROM sites WHERE workspace_id = ?1)';
 
 /** The most blocks one page can hold. */
 export const MAX_BLOCKS = 60;
+
+/** One page of a site as it's published: its settings, blocks and layouts. */
+export interface PageSnapshot extends Pick<
+  Page,
+  'id' | 'path' | 'title' | 'frame' | 'hidden'
+> {
+  blocks: Pick<Block, 'id' | 'type' | 'props'>[];
+  /** The creator's own grid arrangements, by screen, where they saved any. */
+  layouts: Record<string, unknown>;
+}
+
+/** A whole site, frozen: what a version holds and what the draft is now. */
+export interface SiteSnapshot {
+  theme: Record<string, unknown>;
+  pages: PageSnapshot[];
+}
+
+export interface VersionInfo {
+  number: number;
+  note: string | null;
+  /** The Buildbase user who published it. */
+  publishedBy: string;
+  publishedAt: string;
+}
+
+/** True while the draft differs from what visitors see (or nothing is live). */
+export const hasDraftChanges = (site: Site) =>
+  !site.livePublishedAt || site.draftChangedAt > site.livePublishedAt;
+
+/** Sites a version can be published to or made live on. */
+const PUBLISHABLE = "('unpublished', 'live', 'offline')";
+
+/** A new preview token: 32 random bytes, as letters and digits. */
+const newToken = () => {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return Array.from(bytes, (b) => b.toString(36).padStart(2, '0')).join('');
+};
+
+/** Reads a site's draft: every page not removed, its blocks and layouts. */
+async function readDraft(
+  db: D1Database,
+  siteId: string
+): Promise<SiteSnapshot | null> {
+  const site = await db
+    .prepare('SELECT theme FROM sites WHERE id = ?1')
+    .bind(siteId)
+    .first<{ theme: string }>();
+  if (!site) return null;
+  const [pages, blocks, layouts] = await db.batch<Record<string, unknown>>([
+    db
+      .prepare(
+        `SELECT id, path, title, frame, hidden FROM pages
+         WHERE site_id = ?1 AND removed = 0 ORDER BY position`
+      )
+      .bind(siteId),
+    db
+      .prepare(
+        `SELECT b.id, b.type, b.props, b.page_id AS pageId FROM blocks b
+         JOIN pages p ON p.id = b.page_id
+         WHERE p.site_id = ?1 AND p.removed = 0
+         ORDER BY b.position, b.created_at`
+      )
+      .bind(siteId),
+    db
+      .prepare(
+        `SELECT l.page_id AS pageId, l.screen, l.items FROM layouts l
+         JOIN pages p ON p.id = l.page_id WHERE p.site_id = ?1`
+      )
+      .bind(siteId),
+  ]);
+  return {
+    theme: JSON.parse(site.theme),
+    pages: (
+      pages.results as unknown as (Omit<PageSnapshot, 'hidden'> & {
+        hidden: 0 | 1;
+      })[]
+    ).map((page) => ({
+      id: page.id,
+      path: page.path,
+      title: page.title,
+      frame: page.frame,
+      hidden: page.hidden === 1,
+      blocks: (
+        blocks.results as unknown as {
+          id: string;
+          type: string;
+          props: string;
+          pageId: string;
+        }[]
+      )
+        .filter((block) => block.pageId === page.id)
+        .map(({ id, type, props }) => ({ id, type, props: JSON.parse(props) })),
+      layouts: Object.fromEntries(
+        (
+          layouts.results as unknown as {
+            pageId: string;
+            screen: string;
+            items: string;
+          }[]
+        )
+          .filter((layout) => layout.pageId === page.id)
+          .map((layout) => [layout.screen, JSON.parse(layout.items)])
+      ),
+    })),
+  };
+}
 
 export function siteStore(
   db: D1Database,
@@ -278,6 +388,130 @@ export function siteStore(
       return meta.changes > 0;
     },
 
+    /** The site's draft as it would be published; null for another's site. */
+    async draft(siteId: string) {
+      return (await get(siteId)) ? readDraft(db, siteId) : null;
+    },
+
+    /**
+     * Copies the whole draft into the next numbered version and makes it the
+     * live one. An offline site stays offline, with the new version ready
+     * for when it's put back. Null when the site isn't this workspace's or
+     * can't be published (paused or deleted). Two publishes at once each
+     * get their own number.
+     */
+    async publish(
+      siteId: string,
+      publishedBy: string,
+      note: string | null
+    ): Promise<number | null> {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const site = await get(siteId);
+        if (!site || !['unpublished', 'live', 'offline'].includes(site.status))
+          return null;
+        const snapshot = await readDraft(db, siteId);
+        if (!snapshot) return null;
+        const row = await db
+          .prepare(
+            'SELECT coalesce(max(number), 0) + 1 AS next FROM versions WHERE site_id = ?1'
+          )
+          .bind(siteId)
+          .first<{ next: number }>();
+        const number = row?.next ?? 1;
+        try {
+          const [inserted] = await db.batch([
+            db
+              .prepare(
+                `INSERT INTO versions (site_id, number, snapshot, note, published_by)
+                 SELECT id, ?3, ?4, ?5, ?6 FROM sites
+                 WHERE id = ?2 AND workspace_id = ?1 AND status IN ${PUBLISHABLE}`
+              )
+              .bind(
+                workspaceId,
+                siteId,
+                number,
+                JSON.stringify(snapshot),
+                note,
+                publishedBy
+              ),
+            db
+              .prepare(
+                `UPDATE sites SET live_version = ?3,
+                 status = CASE status WHEN 'offline' THEN 'offline' ELSE 'live' END,
+                 updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                 WHERE id = ?2 AND workspace_id = ?1 AND status IN ${PUBLISHABLE}
+                 AND EXISTS (SELECT 1 FROM versions WHERE site_id = ?2 AND number = ?3)`
+              )
+              .bind(workspaceId, siteId, number),
+          ]);
+          return inserted.meta.changes > 0 ? number : null;
+        } catch (error) {
+          // Someone else took this number first: try the next one.
+          if (!/UNIQUE constraint failed: versions/.test(String(error)))
+            throw error;
+        }
+      }
+      throw new Error('Too many publishes at once. Try again.');
+    },
+
+    /** The site's versions, newest first; none for another's site. */
+    versions: async (siteId: string): Promise<VersionInfo[]> =>
+      (
+        await db
+          .prepare(
+            `SELECT v.number, v.note, v.published_by AS publishedBy,
+             v.published_at AS publishedAt FROM versions v
+             JOIN sites s ON s.id = v.site_id
+             WHERE v.site_id = ?2 AND s.workspace_id = ?1
+             ORDER BY v.number DESC`
+          )
+          .bind(workspaceId, siteId)
+          .all<VersionInfo>()
+      ).results,
+
+    /**
+     * Makes an older (or newer) version the live one. The draft stays as it
+     * is. False when there's no such version or the site can't change.
+     */
+    async rollback(siteId: string, number: number) {
+      const { meta } = await db
+        .prepare(
+          `UPDATE sites SET live_version = ?3,
+           updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+           WHERE id = ?2 AND workspace_id = ?1 AND status IN ('live', 'offline')
+           AND EXISTS (SELECT 1 FROM versions WHERE site_id = ?2 AND number = ?3)`
+        )
+        .bind(workspaceId, siteId, number)
+        .run();
+      return meta.changes > 0;
+    },
+
+    /** The site's private preview token, or null while the link is off. */
+    async previewToken(siteId: string) {
+      const row = await db
+        .prepare(
+          'SELECT preview_token AS token FROM sites WHERE id = ?2 AND workspace_id = ?1'
+        )
+        .bind(workspaceId, siteId)
+        .first<{ token: string | null }>();
+      return row?.token ?? null;
+    },
+
+    /**
+     * Turns the private preview link on (with a new token, so an old link
+     * stays dead) or off. Answers the new token, or null.
+     */
+    async setPreview(siteId: string, on: boolean) {
+      const token = on ? newToken() : null;
+      await db
+        .prepare(
+          'UPDATE sites SET preview_token = ?3 WHERE id = ?2 AND workspace_id = ?1'
+        )
+        .bind(workspaceId, siteId, token)
+        .run();
+      return token;
+    },
+
     /** Changes a page's draft. False when it isn't this workspace's page. */
     async updatePage(
       pageId: string,
@@ -321,4 +555,28 @@ export async function takenHandles(
     .bind(...handles)
     .all<{ handle: string }>();
   return new Set(results.map((row) => row.handle));
+}
+
+/**
+ * The draft behind a private preview link, for /draft/<token>, which
+ * anyone with the link can open. Like takenHandles, this one read isn't kept
+ * to one workspace: the token is the key. Null for an unknown token and
+ * for a site that's paused or deleted.
+ */
+export async function draftByPreviewToken(
+  db: D1Database,
+  token: string
+): Promise<{ handle: string; draft: SiteSnapshot } | null> {
+  if (!/^[0-9a-z]{64}$/.test(token)) return null;
+  const site = await db
+    .prepare(
+      `SELECT s.id, h.handle FROM sites s
+       JOIN handles h ON h.site_id = s.id AND h.kind = 'site'
+       WHERE s.preview_token = ?1 AND s.status NOT IN ('paused', 'deleted')`
+    )
+    .bind(token)
+    .first<{ id: string; handle: string }>();
+  if (!site) return null;
+  const draft = await readDraft(db, site.id);
+  return draft && { handle: site.handle, draft };
 }

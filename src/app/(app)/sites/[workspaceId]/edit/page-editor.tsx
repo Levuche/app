@@ -42,17 +42,22 @@ export function PageEditor({
   pageId,
   frame,
   initialBlocks,
+  initialSelected,
   readOnly,
 }: {
   workspaceId: string;
   pageId: string;
   frame: PageFrame;
   initialBlocks: Block[];
+  /** The block to open with, when it's on the page. */
+  initialSelected?: string;
   readOnly: boolean;
 }) {
   const [blocks, setBlocks] = useState(initialBlocks);
   const [selected, setSelected] = useState<string | null>(
-    initialBlocks[0]?.id ?? null
+    initialBlocks.find((b) => b.id === initialSelected)?.id ??
+      initialBlocks[0]?.id ??
+      null
   );
   const [screen, setScreen] = useState<Screen>('phone');
   const [save, setSave] = useState<SaveState>({ kind: 'saved' });

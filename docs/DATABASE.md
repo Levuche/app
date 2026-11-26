@@ -30,8 +30,9 @@ migration reaches it only once the pull request is merged.
 
 ## Tables
 
-From `migrations/0001_sites_pages_versions.sql`, and `0002_block_order.sql`
-for the order of blocks:
+From `migrations/0001_sites_pages_versions.sql`, `0002_block_order.sql`
+for the order of blocks, and `0003_preview_link.sql` for a site's private
+preview link (`sites.preview_token`):
 
 | Table      | One row per                                                                          |
 | ---------- | ------------------------------------------------------------------------------------ |
@@ -57,14 +58,21 @@ Every query goes through `siteStore(db, { workspaceId })` in
 `src/lib/db.ts`, with the workspace the signed-in creator is working in.
 It only ever sees that workspace's rows: another workspace's site reads as
 not found and can't be changed. Don't query the tables by id alone
-anywhere else. The one exception is `takenHandles(db, handles)`, which
-answers only which of some public addresses are in use, for the new-site
-form's live check.
+anywhere else. Two reads are the exception: `takenHandles(db, handles)`,
+which answers only which of some public addresses are in use, for the
+new-site form's live check, and `draftByPreviewToken(db, token)`, where the
+private preview link's token is the key.
+
+Publishing copies the whole draft (pages, blocks, layouts and theme) into
+the next row of `versions` and points `live_version` at it, in one batch;
+two publishes at once each get their own number. Rolling back only moves
+`live_version`, so the draft stays as it is.
 
 `npm test` runs `src/lib/db.test.ts` against a local D1 with every
 migration applied, and checks that one workspace can't read or change
-another's rows, blocks included (`addBlock`, `updateBlock`, `moveBlock`,
-`removeBlock`, which keep a page's block positions numbered 0, 1, 2…).
+another's rows, blocks and versions included (`addBlock`, `updateBlock`,
+`moveBlock` and `removeBlock` keep a page's block positions numbered 0, 1,
+2…).
 
 ## Changing the tables
 

@@ -5,16 +5,23 @@ import { siteStore } from '@/lib/db';
 import { database, getSite, SITE_EDIT } from '@/lib/sites';
 import { PageEditor } from './page-editor';
 
-type Props = { params: Promise<{ workspaceId: string }> };
+type Props = {
+  params: Promise<{ workspaceId: string }>;
+  searchParams: Promise<{ block?: string | string[] }>;
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { site } = await getSite((await params).workspaceId);
   return { title: `Edit ${site.name}` };
 }
 
-/** The page editor (#20) for a site's home page. */
-export default async function EditPage({ params }: Props) {
+/**
+ * The page editor (#20) for a site's home page. `?block=<id>` opens with
+ * that block selected, as the publish checks' "Fix" links do.
+ */
+export default async function EditPage({ params, searchParams }: Props) {
   const { workspaceId } = await params;
+  const { block } = await searchParams;
   const { site, can } = await getSite(workspaceId);
   const store = siteStore(await database(), { workspaceId });
   const home = (await store.pages(site.id)).find((page) => page.isHome);
@@ -40,6 +47,7 @@ export default async function EditPage({ params }: Props) {
         pageId={home.id}
         frame={home.frame}
         initialBlocks={blocks}
+        initialSelected={typeof block === 'string' ? block : undefined}
         readOnly={!can(SITE_EDIT)}
       />
     </main>

@@ -63,6 +63,33 @@ only moves a site between `live` and `offline`, keeping its live version.
 A site the Levuche team paused, or one never published, doesn't move.
 Visitors see an "offline" page meanwhile (#23). Deleting a site comes later.
 
+## Publishing
+
+`/sites/<workspace id>/publish` (#21), reached from "Publish" on the
+overview. Admins and editors publish; viewers see the versions.
+
+- **Checks first:** `publishProblems` (`src/lib/publish.ts`) lists every
+  block that isn't ready as "Needs a fix", with a link that opens the
+  editor on that block (`?block=<id>`): needed fields left empty, list
+  items half filled in, links that won't open and pictures not on https.
+  Publish shows only when the list is empty. Paying for the site (#19)
+  joins these checks.
+- **Publishing** copies the draft into the next numbered version with an
+  optional note and makes it live (`siteStore.publish`). An offline site
+  stays offline, with the new version ready for when it's put back; a
+  paused one can't be published.
+- **Versions** lists each publish with its note, who published it and
+  when; "Make live" on an older one makes it live again and keeps the
+  draft. The overview says "Live, version N", and "Draft has changes" while
+  the draft differs from the live version.
+- **Private preview link:** `/draft/<token>` on the app shows the draft's
+  home page to anyone with the link, signed in or not, as it would go live.
+  It's sent with `noindex`, `no-store` and `no-referrer`. Turning it off
+  stops the link working, and turning it on again makes a new one. It
+  doesn't work for a paused site.
+- The live site's cache is cleared on publish and rollback once
+  levuche.page serves sites (#23).
+
 ## Roles and checks
 
 Set up in the Buildbase development environment (Settings > Workspaces);
@@ -118,7 +145,7 @@ viewers see the same screen with nothing to change.
 - **Layout** follows the page's frame and the grid's own arrangement on
   each screen; moving blocks by hand on the grid comes later.
 
-Nothing reaches visitors until the site is published (#21).
+Nothing reaches visitors until the site is published (see Publishing).
 
 ## The switcher and settings
 
@@ -142,3 +169,5 @@ its own) and a local D1 database: a first site, a taken handle, a site
 outside the creator's workspaces, a viewer, and the switcher.
 `e2e/editor.spec.ts` fills in a link and sees it saved, adds, moves and
 removes blocks, and checks a viewer can't change anything.
+`e2e/publish.spec.ts` lists what needs a fix, publishes, rolls back,
+turns the preview link on and off, and checks a viewer can't publish.

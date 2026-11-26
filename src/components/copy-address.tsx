@@ -8,7 +8,14 @@ import { buttonClasses } from '@/lib/button';
  * reader hears too. Without the clipboard (an old browser, a page not
  * served over https), it says how to copy it by hand instead.
  */
-export function CopyAddress({ address }: { address: string }) {
+export function CopyAddress({
+  address,
+  url = `https://${address}`,
+}: {
+  address: string;
+  /** What's copied, when it isn't the address on https. */
+  url?: string;
+}) {
   const [said, setSaid] = useState('');
 
   return (
@@ -18,7 +25,7 @@ export function CopyAddress({ address }: { address: string }) {
         className={buttonClasses('outline')}
         onClick={async () => {
           try {
-            await navigator.clipboard.writeText(`https://${address}`);
+            await navigator.clipboard.writeText(url);
             setSaid('Copied.');
           } catch {
             setSaid('Select the address to copy it.');

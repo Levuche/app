@@ -126,7 +126,10 @@ test("the overview shows the site's status and copies its link", async ({
   );
 });
 
-/** Marks a site live in the local database, as publishing (#21) will. */
+/**
+ * Marks a site live in the local database, quicker than filling in its
+ * blocks to publish (e2e/publish.spec.ts publishes for real).
+ */
 function makeLive(handle: string) {
   execFileSync(
     'npx',
@@ -156,7 +159,9 @@ test('an admin takes a live site offline and puts it back', async ({
 
   makeLive(handle);
   await page.reload();
-  await expect(page.getByText('Live', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('Live, version 1', { exact: true })
+  ).toBeVisible();
   await expect(
     page.getByRole('link', { name: `${handle}.levuche.page` })
   ).toBeVisible();
@@ -169,7 +174,9 @@ test('an admin takes a live site offline and puts it back', async ({
   await expectNoA11yViolations(page);
 
   await page.getByRole('button', { name: 'Put back online' }).click();
-  await expect(page.getByText('Live', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('Live, version 1', { exact: true })
+  ).toBeVisible();
 });
 
 test('a taken address is refused and leaves nothing behind', async ({
