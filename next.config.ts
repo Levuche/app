@@ -24,8 +24,9 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   // No `x-powered-by: Next.js` header.
   poweredByHeader: false,
-  // @levuche/kit ships TypeScript source (github.com/Levuche/kit).
-  transpilePackages: ['@levuche/kit'],
+  // @levuche/kit and @levuche/ui ship TypeScript source
+  // (github.com/Levuche/kit, github.com/Levuche/ui).
+  transpilePackages: ['@levuche/kit', '@levuche/ui'],
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },

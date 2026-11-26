@@ -10,6 +10,22 @@ Right now it's the starting point: the Next.js app on Cloudflare Workers with
 its checks, deploys, preview links, tests and the Levuche theme. Sign-in and
 the dashboard come next; see the open issues.
 
+## Creator pages
+
+A creator's page is drawn by `CreatorPage` (`src/components/creator-page.tsx`)
+from the blocks in [@levuche/ui](https://github.com/Levuche/ui), in one of two
+layouts (`src/lib/page-layout.ts`):
+
+- **Profile beside the grid** (the default): on a tablet and a desktop the
+  profile sits in a column on the left and stays in view, with the blocks in
+  a grid beside it; on a phone everything is one column.
+- **One column**: every block in one centred column on every screen.
+
+A "Back to top" button shows up once a visitor has scrolled. To see both on
+a phone, a tablet and a desktop, open the sample page at `/preview`
+(`/preview?layout=column` for one column, `?scheme=dark` for the creator's
+dark colours).
+
 ## Stack
 
 - Next.js 16 and React 19, on Cloudflare Workers through OpenNext

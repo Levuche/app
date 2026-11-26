@@ -2,6 +2,10 @@
 /* The product theme (design tokens --lv-*, light and dark, and the size
    presets), shared with levuche.com through @levuche/kit. */
 @import '@levuche/kit/theme.css';
+/* Creator pages: the --site-* tokens and the page blocks from @levuche/ui. */
+@import '@levuche/ui/tokens.css';
+/* Let Tailwind see the classes the page blocks use. */
+@source '../../node_modules/@levuche/ui/src';
 
 html {
   background: var(--lv-bg);
@@ -16,4 +20,8 @@ html {
 :focus-visible {
   outline: 2px solid var(--lv-primary);
   outline-offset: 2px;
+}
+/* "Back to top" moves the focus to the page's <main>; no ring around all of it. */
+main[tabindex='-1']:focus-visible {
+  outline: none;
 }
