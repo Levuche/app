@@ -4,6 +4,7 @@
 // or change another's.
 import type { D1Database } from '@cloudflare/workers-types';
 import type { PageFrame } from './page-layout';
+import type { StarterBlock } from './starter';
 
 export type SiteStatus =
   'unpublished' | 'live' | 'offline' | 'paused' | 'deleted';
@@ -32,6 +33,16 @@ export interface Page {
   /** Gone from the site at the next publish. */
   removed: boolean;
   frame: PageFrame;
+}
+
+export interface Block {
+  id: string;
+  /** A @levuche/ui block id, as 'link-list'. */
+  type: string;
+  /** Its settings, as the block's settings panel describes them. */
+  props: Record<string, unknown>;
+  /** Reading order on the page, from 0. */
+  position: number;
 }
 
 type PageRow = Omit<Page, 'isHome' | 'hidden' | 'removed'> &
@@ -68,11 +79,12 @@ export function siteStore(
 
     /**
      * A new, unpublished site at `handle` (already checked against the
-     * handle rules) with an empty home page. Null when the handle is taken,
-     * held or reserved.
+     * handle rules) with a home page holding `blocks`, in that order. Null
+     * when the handle is taken, held or reserved.
      */
-    async create(handle: string) {
+    async create(handle: string, blocks: StarterBlock[] = []) {
       const id = crypto.randomUUID();
+      const homeId = crypto.randomUUID();
       try {
         await db.batch([
           db
@@ -87,7 +99,20 @@ export function siteStore(
             .prepare(
               "INSERT INTO pages (id, site_id, path, title, position, is_home) VALUES (?1, ?2, '', 'Home', 0, 1)"
             )
-            .bind(crypto.randomUUID(), id),
+            .bind(homeId, id),
+          ...blocks.map((block, position) =>
+            db
+              .prepare(
+                'INSERT INTO blocks (id, page_id, type, props, position) VALUES (?1, ?2, ?3, ?4, ?5)'
+              )
+              .bind(
+                crypto.randomUUID(),
+                homeId,
+                block.type,
+                JSON.stringify(block.props),
+                position
+              )
+          ),
         ]);
       } catch (error) {
         if (/UNIQUE constraint failed: handles\.handle/.test(String(error)))
@@ -138,6 +163,20 @@ export function siteStore(
       return meta.changes > 0;
     },
 
+    /** A page's blocks in reading order; none for another workspace's page. */
+    blocks: async (pageId: string): Promise<Block[]> =>
+      (
+        await db
+          .prepare(
+            `SELECT b.id, b.type, b.props, b.position FROM blocks b
+             JOIN pages p ON p.id = b.page_id
+             WHERE b.page_id = ?2 AND p.${OWN_SITE}
+             ORDER BY b.position, b.created_at`
+          )
+          .bind(workspaceId, pageId)
+          .all<Omit<Block, 'props'> & { props: string }>()
+      ).results.map((row) => ({ ...row, props: JSON.parse(row.props) })),
+
     /** Changes a page's draft. False when it isn't this workspace's page. */
     async updatePage(
       pageId: string,
@@ -161,4 +200,24 @@ export function siteStore(
       return meta.changes > 0;
     },
   };
+}
+
+/**
+ * Which of `handles` are already in use: a site's, held after a site was
+ * deleted, or reserved by the Levuche team. Handles are public addresses,
+ * so this is the one read that isn't kept to one workspace; it returns
+ * nothing else about the sites behind them.
+ */
+export async function takenHandles(
+  db: D1Database,
+  handles: string[]
+): Promise<Set<string>> {
+  if (handles.length === 0) return new Set();
+  const { results } = await db
+    .prepare(
+      `SELECT handle FROM handles WHERE handle IN (${handles.map((_, i) => `?${i + 1}`).join(', ')})`
+    )
+    .bind(...handles)
+    .all<{ handle: string }>();
+  return new Set(results.map((row) => row.handle));
 }

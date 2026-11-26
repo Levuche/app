@@ -50,6 +50,20 @@ service token as the repository secrets `CF_ACCESS_CLIENT_ID` and
 `CF_ACCESS_CLIENT_SECRET`; without them the checks only confirm that Access
 asks for sign-in.
 
+## Security headers
+
+`next.config.ts` sends a Content-Security-Policy with every response,
+allowing only the app's own origin, the Buildbase API, Stripe's card fields
+(Buildbase's billing screens) and YouTube's privacy-mode player. It is
+enforced only on app.levuche.com; app-dev, previews and `npm run dev` send
+it as report-only. Browsers report what it blocks, or would block, to
+`/api/csp-report`, which writes one `csp-violation` line per report to the
+Worker's logs (Workers > levuche-app or levuche-app-dev > Observability),
+keeping only the directive, the blocked origin and the page's path. Before
+a release, open app-dev with the browser console open and sign in, open the
+account and team screens and sign out: nothing should be reported. A host
+that shows up there goes into the policy.
+
 ## Runtime secrets
 
 The sign-in client's secret, from the Buildbase console, is set on each

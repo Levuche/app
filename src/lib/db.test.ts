@@ -9,7 +9,8 @@ import { join } from 'node:path';
 import { after, before, test } from 'node:test';
 import type { D1Database } from '@cloudflare/workers-types';
 import { getPlatformProxy } from 'wrangler';
-import { siteStore } from './db.ts';
+import { siteStore, takenHandles } from './db.ts';
+import { starterBlocks } from './starter.ts';
 
 const dir = mkdtempSync(join(tmpdir(), 'levuche-db-'));
 let proxy: Awaited<ReturnType<typeof getPlatformProxy<{ DB: D1Database }>>>;
@@ -158,4 +159,47 @@ test('a live site goes offline and back, and nothing else moves', async () => {
     .run();
   assert.equal(await store.setOffline(site.id, false), false);
   assert.equal(await store.setOffline(site.id, true), false);
+});
+
+test('a new site opens with the starting layout, in order', async () => {
+  const store = siteStore(db, { workspaceId: 'ws-starter' });
+  const site = await store.create('starter', starterBlocks('Sam Rivera'));
+  assert.ok(site);
+  const [home] = await store.pages(site.id);
+  const blocks = await store.blocks(home.id);
+  assert.deepEqual(
+    blocks.map(({ type, props, position }) => ({ type, props, position })),
+    starterBlocks('Sam Rivera').map((block, position) => ({
+      ...block,
+      position,
+    }))
+  );
+  // Another workspace sees none of them.
+  assert.deepEqual(
+    await siteStore(db, { workspaceId: 'ws-other' }).blocks(home.id),
+    []
+  );
+});
+
+test('taken, held and reserved handles all count as taken', async () => {
+  const site = await siteStore(db, { workspaceId: 'ws-taken' }).create(
+    'in-use'
+  );
+  assert.ok(site);
+  await db
+    .prepare(
+      "INSERT INTO handles (handle, site_id, kind, free_at) VALUES ('was-mine', ?1, 'held', '2099-01-01T00:00:00Z')"
+    )
+    .bind(site.id)
+    .run();
+  await db
+    .prepare("INSERT INTO handles (handle, kind) VALUES ('kept', 'reserved')")
+    .run();
+  assert.deepEqual(
+    [
+      ...(await takenHandles(db, ['in-use', 'was-mine', 'kept', 'free-one'])),
+    ].sort(),
+    ['in-use', 'kept', 'was-mine']
+  );
+  assert.deepEqual([...(await takenHandles(db, []))], []);
 });
