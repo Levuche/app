@@ -10,11 +10,11 @@ to a workspace work on that site with the role they were given.
 
 ## Addresses
 
-| Address                 | Page                                                                       |
-| ----------------------- | -------------------------------------------------------------------------- |
-| `/`                     | No sites: on to `/new`. One site: on to it. More: the list of sites.       |
-| `/new`                  | Make a site: its name and its handle on levuche.page.                      |
-| `/sites/<workspace id>` | The site. "Page not found" for anyone who isn't a member of its workspace. |
+| Address                 | Page                                                                          |
+| ----------------------- | ----------------------------------------------------------------------------- |
+| `/`                     | No sites: on to `/new`. One site: on to it. More: the list of sites.          |
+| `/new`                  | Make a site: its name and its handle on levuche.page.                         |
+| `/sites/<workspace id>` | The site's overview: status, link and Copy. "Page not found" for non-members. |
 
 ## Making a site
 

@@ -8,7 +8,8 @@
 // - GET .../profile answers the creator behind x-session-id. Any session
 //   that starts "e2e-" is a creator of its own, so each test can start with
 //   no sites; any other session gets 401, as Buildbase does for an ended one.
-// - POST .../logout answers success.
+// - POST .../logout ends the session behind x-session-id: from then on it
+//   gets 401, as an ended session does on Buildbase and so on levuche.com.
 // - GET .../<org>/settings answers the organization's settings as the
 //   Buildbase development environment has them. The SDK's workspace switcher
 //   waits for these: without them it keeps asking and never opens.
@@ -34,8 +35,12 @@ const CREATOR = {
   role: 'user',
 };
 
+/** Sessions signed out through .../logout, which Buildbase no longer knows. */
+const ended = new Set();
+
 /** The creator behind a session, or undefined for an ended one. */
 function creator(session) {
+  if (ended.has(session)) return undefined;
   if (session === SESSION) return CREATOR;
   if (!session?.startsWith('e2e-')) return undefined;
   const id = createHash('sha256').update(session).digest('hex').slice(0, 24);
@@ -175,6 +180,9 @@ createServer(async (req, res) => {
       : send(res, 401, { message: 'Session expired' });
   }
   if (req.method === 'POST' && path.endsWith('/logout')) {
+    // The shared test session stays, so other tests can keep using it.
+    const session = req.headers['x-session-id'];
+    if (session && session !== SESSION) ended.add(session);
     return send(res, 200, { success: true });
   }
 
