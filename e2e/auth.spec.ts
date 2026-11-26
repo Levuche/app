@@ -72,6 +72,34 @@ test('signing out ends the session', async ({ page, context }) => {
   expect((await context.cookies()).some((c) => c.name === COOKIE)).toBe(false);
 });
 
+// levuche.com reads the same session, so ending it at Buildbase is what
+// signs the creator out there too: even a copy of the old cookie that a
+// browser kept no longer signs anyone in.
+test('signing out ends the session on levuche.com too', async ({
+  page,
+  context,
+}) => {
+  const session = `e2e-signout-${Date.now()}-${Math.random()}`;
+  const theirs = { ...signedIn, value: session };
+  await context.addCookies([theirs]);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Sam Rivera' }).click();
+  const signedOut = page.waitForResponse('**/api/auth/signout');
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  const cleared = (await signedOut).headers()['set-cookie'] ?? '';
+  expect(cleared).toContain(`${COOKIE}=;`);
+  expect(cleared).toMatch(/Max-Age=0/i);
+  await expect(
+    page.getByRole('heading', { name: 'Sign in to Levuche' })
+  ).toBeVisible();
+
+  await context.addCookies([theirs]);
+  await page.goto('/');
+  await expect(
+    page.getByRole('heading', { name: 'Sign in to Levuche' })
+  ).toBeVisible();
+});
+
 test('another site cannot post to the sign-in routes', async ({ request }) => {
   for (const route of ['token', 'signout']) {
     const response = await request.post(`/api/auth/${route}`, {
