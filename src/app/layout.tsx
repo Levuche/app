@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next';
+import { BuildbaseProvider } from '@/components/buildbase-provider';
 import { ThemeProvider } from '@/components/theme-provider';
 import { appUrl, site } from '@/lib/site';
+import '@buildbase/sdk/css';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -35,7 +37,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <BuildbaseProvider>{children}</BuildbaseProvider>
         </ThemeProvider>
       </body>
     </html>

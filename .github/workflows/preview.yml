@@ -53,8 +53,14 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
       HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-      # Built like the dev app.
+      # Built like the dev app. A workers.dev preview can't read the
+      # levuche.com sign-in cookie, so it always shows the sign-in screen,
+      # and signing in there lands on app-dev.levuche.com.
       NEXT_PUBLIC_APP_URL: https://app-dev.levuche.com
+      NEXT_PUBLIC_BUILDBASE_REDIRECT_URL: https://app-dev.levuche.com
+      NEXT_PUBLIC_BUILDBASE_ORG_ID: ${{ vars.BUILDBASE_ORG_ID }}
+      NEXT_PUBLIC_BUILDBASE_ENVIRONMENT: ${{ vars.BUILDBASE_ENVIRONMENT }}
+      NEXT_PUBLIC_BUILDBASE_CLIENT_ID: ${{ vars.BUILDBASE_CLIENT_ID }}
       # Optional: a Cloudflare Access service token, so the checks can see
       # past the team sign-in.
       CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}

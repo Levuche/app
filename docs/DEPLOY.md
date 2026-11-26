@@ -51,8 +51,8 @@ asks for sign-in.
 
 ## Runtime secrets
 
-None yet. When sign-in arrives, its secrets are set on each Worker, never in
-the repo:
+The sign-in client's secret, from the Buildbase console, is set on each
+Worker, never in the repo or GitHub ([AUTH.md](AUTH.md)):
 
 ```sh
 npx wrangler secret put BUILDBASE_CLIENT_SECRET --env dev
