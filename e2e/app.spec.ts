@@ -50,9 +50,52 @@ test('stays out of search engines and sends the security headers', async ({
   expect(headers['x-frame-options']).toBe('DENY');
   expect(headers['x-content-type-options']).toBe('nosniff');
   expect(headers['x-powered-by']).toBeUndefined();
+  expect(headers['referrer-policy']).toBe('strict-origin-when-cross-origin');
 
   const robots = await request.get('/robots.txt');
   expect(await robots.text()).toMatch(/Disallow: \/\s*$/m);
+});
+
+test('sends the security policy, report-only off app.levuche.com', async ({
+  request,
+}) => {
+  const headers = (await request.get('/')).headers();
+  // Previews, app-dev and the local test build only report.
+  expect(headers['content-security-policy']).toBeUndefined();
+  const policy = headers['content-security-policy-report-only'] ?? '';
+  expect(policy).toContain("default-src 'self'");
+  expect(policy).toContain("frame-ancestors 'none'");
+  expect(policy).toContain("object-src 'none'");
+  expect(policy).toContain('report-uri /api/csp-report');
+  expect(headers['reporting-endpoints']).toBe('csp="/api/csp-report"');
+});
+
+test('the policy report endpoint takes both report shapes', async ({
+  request,
+}) => {
+  const older = await request.post('/api/csp-report', {
+    headers: { 'Content-Type': 'application/csp-report' },
+    data: JSON.stringify({
+      'csp-report': {
+        'document-uri': 'https://app-dev.levuche.com/new?x=1',
+        'effective-directive': 'script-src-elem',
+        'blocked-uri': 'https://evil.example/a.js',
+      },
+    }),
+  });
+  expect(older.status()).toBe(204);
+  const newer = await request.post('/api/csp-report', {
+    headers: { 'Content-Type': 'application/reports+json' },
+    data: JSON.stringify([
+      {
+        type: 'csp-violation',
+        body: { effectiveDirective: 'img-src', blockedURL: 'data' },
+      },
+    ]),
+  });
+  expect(newer.status()).toBe(204);
+  const junk = await request.post('/api/csp-report', { data: 'not json' });
+  expect(junk.status()).toBe(204);
 });
 
 test('the health check answers', async ({ request }) => {
