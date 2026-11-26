@@ -126,7 +126,10 @@ export default async function PublishPage({ params, searchParams }: Props) {
         {site.status === 'paused' ? (
           <p className="m-0">
             The Levuche team paused this site after a report, so it can&apos;t
-            be published.
+            be published.{' '}
+            <Link href={`/sites/${workspaceId}`} className={link}>
+              See why, and ask us to look again
+            </Link>
           </p>
         ) : fixes.length ? (
           <>

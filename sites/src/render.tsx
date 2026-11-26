@@ -12,7 +12,6 @@ import type { InApp, Missing, Renderer } from './serve';
 import { androidOpenUrl } from './visitor';
 
 const WEBSITE = 'https://levuche.com';
-const APP = 'https://app.levuche.com';
 
 const text = (value: unknown) =>
   typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -137,10 +136,12 @@ function Missing({
   why,
   handle,
   base,
+  app,
 }: {
   why: Missing;
   handle: string;
   base: string;
+  app: string;
 }) {
   const { title, say, link } = MISSING[why];
   const linkClass =
@@ -152,7 +153,7 @@ function Missing({
       {link === 'claim' ? (
         <a
           className={linkClass}
-          href={`${APP}/new?handle=${encodeURIComponent(handle)}`}
+          href={`${app}/new?handle=${encodeURIComponent(handle)}`}
         >
           Make it yours
         </a>
@@ -171,8 +172,32 @@ function Missing({
   );
 }
 
+/** The foot of every live page: who made it, and a way to report it (#33). */
+function SiteFoot({
+  handle,
+  path,
+  app,
+}: {
+  handle: string;
+  path: string;
+  app: string;
+}) {
+  const report = `${app}/report/${encodeURIComponent(handle)}${path ? `?page=${encodeURIComponent(path)}` : ''}`;
+  const linkClass = 'text-lv-text-2 underline-offset-4 hover:underline';
+  return (
+    <footer className="flex flex-wrap justify-center gap-x-6 gap-y-2 px-4 pt-4 pb-8 text-sm">
+      <a href={WEBSITE} className={linkClass}>
+        Made with Levuche
+      </a>
+      <a href={report} className={linkClass} rel="nofollow">
+        Report this page
+      </a>
+    </footer>
+  );
+}
+
 export const render: Renderer = {
-  page({ site, page, inApp }) {
+  page({ site, page, inApp, app }) {
     const header = page.blocks.find((block) => block.type === 'creator-header')
       ?.props as Record<string, unknown> | undefined;
     const name = text(header?.name) ?? site.handle;
@@ -184,20 +209,25 @@ export const render: Renderer = {
       image: avatar?.startsWith('https://') ? avatar : null,
       inApp,
       children: (
-        <CreatorPage
-          blocks={pageBlocks(page.blocks)}
-          frame={page.frame}
-          layouts={page.layouts as PageLayouts}
-        />
+        <>
+          <CreatorPage
+            blocks={pageBlocks(page.blocks)}
+            frame={page.frame}
+            layouts={page.layouts as PageLayouts}
+          />
+          <SiteFoot handle={site.handle} path={page.path} app={app} />
+        </>
       ),
     });
   },
-  missing({ why, site, inApp }) {
+  missing({ why, site, inApp, app }) {
     return document({
       title: MISSING[why].title,
       url: site.path ? `${site.base}/${site.path}` : `${site.base}/`,
       inApp,
-      children: <Missing why={why} handle={site.handle} base={site.base} />,
+      children: (
+        <Missing why={why} handle={site.handle} base={site.base} app={app} />
+      ),
     });
   },
 };

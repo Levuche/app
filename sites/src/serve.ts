@@ -23,7 +23,11 @@ export interface SitesEnv extends SitesConfig {
   SITES_NOINDEX?: string;
   /** Changes with each deploy, so cached pages from an older build aren't used. */
   BUILD_ID?: string;
+  /** The app, for links to make a site and to report one. */
+  APP_URL?: string;
 }
+
+const DEFAULT_APP = 'https://app.levuche.com';
 
 /** Why a site address has no page to show. */
 export type Missing =
@@ -51,12 +55,14 @@ export interface Renderer {
     snapshot: SiteSnapshot;
     inApp: InApp;
     url: string;
+    app: string;
   }): string | Promise<string>;
   missing(input: {
     why: Missing;
     site: Located;
     inApp: InApp;
     url: string;
+    app: string;
   }): string | Promise<string>;
 }
 
@@ -180,6 +186,7 @@ export async function serve(
   }
 
   const inApp = inAppBrowser(request.headers.get('User-Agent'));
+  const app = (env.APP_URL || DEFAULT_APP).replace(/\/+$/, '');
   const state = await findSite(env.DB, site.handle);
   const live =
     state.kind === 'site' &&
@@ -199,7 +206,7 @@ export async function serve(
 
   const missing = async (why: Missing) =>
     answer(
-      await render.missing({ why, site, inApp, url: url.href }),
+      await render.missing({ why, site, inApp, url: url.href, app }),
       MISSING_STATUS[why],
       headers(env, 'text/html; charset=utf-8', {
         ...NO_CACHE,
@@ -267,6 +274,7 @@ export async function serve(
     snapshot,
     inApp,
     url: url.href,
+    app,
   });
   if (page.hidden && !noindex) pageHeaders.set('X-Robots-Tag', 'noindex');
   await cache?.put(

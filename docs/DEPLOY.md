@@ -87,6 +87,15 @@ npx wrangler secret put BUILDBASE_CLIENT_SECRET --env dev
 npx wrangler secret put BUILDBASE_CLIENT_SECRET
 ```
 
+The Levuche team's Buildbase user ids, separated by commas, open the
+reports and pauses screen at `/staff` ([SITES.md](SITES.md)). Kept out of
+the repo:
+
+```sh
+npx wrangler secret put STAFF_USER_IDS --env dev
+npx wrangler secret put STAFF_USER_IDS
+```
+
 ## Deploying again
 
 **Actions** > **Deploy to Cloudflare** > **Run workflow**, then pick `dev` or

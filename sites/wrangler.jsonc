@@ -17,7 +17,10 @@
   // DNS record and certificate are set up by the owner first (docs/DEPLOY.md).
   "routes": [{ "pattern": "*.levuche.page/*", "zone_name": "levuche.page" }],
   "workers_dev": false,
-  "vars": { "SITES_DOMAIN": "levuche.page" },
+  "vars": {
+    "SITES_DOMAIN": "levuche.page",
+    "APP_URL": "https://app.levuche.com",
+  },
   "d1_databases": [
     {
       "binding": "DB",
@@ -37,6 +40,7 @@
         "SITES_DOMAIN": "levuche.page",
         "SITES_PATH_HOST": "sites-dev.levuche.com",
         "SITES_NOINDEX": "true",
+        "APP_URL": "https://app-dev.levuche.com",
       },
       "d1_databases": [
         {
