@@ -30,9 +30,9 @@ export function PausedNotice({
     <section
       aria-labelledby="paused"
       data-paused-notice
-      className="bg-lv-surface-2 rounded-card p-card flex flex-col gap-3"
+      className="bg-lv-surface-2 rounded-box p-box flex flex-col gap-3"
     >
-      <h2 id="paused" className="text-h2 m-0">
+      <h2 id="paused" className="text-section m-0">
         The Levuche team paused your site
       </h2>
       <p className="m-0">

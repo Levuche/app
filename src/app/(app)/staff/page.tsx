@@ -45,7 +45,7 @@ const when = (iso: string | null) =>
 
 const link = 'text-lv-link font-semibold underline-offset-4 hover:underline';
 const card =
-  'bg-lv-card border-lv-border rounded-card p-card flex flex-col gap-4 border-2';
+  'bg-lv-card border-lv-border rounded-box p-box flex flex-col gap-4 border-2';
 const field =
   'border-lv-border bg-lv-bg text-lv-text rounded-xl border-2 p-3 font-[inherit]';
 
@@ -68,14 +68,14 @@ export default async function StaffPage({ searchParams }: Props) {
   ]);
 
   return (
-    <main className="px-gutter max-w-layout mx-auto flex w-full flex-1 flex-col gap-8 py-12">
-      <h1 className="text-h1 m-0">Reports and pauses</h1>
+    <main className="px-gutter max-w-layout py-page mx-auto flex w-full flex-1 flex-col gap-6">
+      <h1 className="text-title m-0">Reports and pauses</h1>
       <p role="status" className="m-0 font-semibold empty:hidden">
         {done ? (DONE[done] ?? null) : null}
       </p>
 
       <section aria-labelledby="reported" className="flex flex-col gap-4">
-        <h2 id="reported" className="text-h2 m-0">
+        <h2 id="reported" className="text-section m-0">
           Open reports
         </h2>
         {reported.length === 0 ? (
@@ -88,7 +88,10 @@ export default async function StaffPage({ searchParams }: Props) {
               aria-labelledby={`site-${site.siteId}`}
               className={card}
             >
-              <h3 id={`site-${site.siteId}`} className="m-0 text-lg break-all">
+              <h3
+                id={`site-${site.siteId}`}
+                className="text-item m-0 break-all"
+              >
                 {siteAddress(site.handle)}{' '}
                 <span className="text-lv-text-2 text-sm font-normal">
                   {site.reports.length === 1
@@ -190,7 +193,7 @@ export default async function StaffPage({ searchParams }: Props) {
       </section>
 
       <section aria-labelledby="paused" className="flex flex-col gap-4">
-        <h2 id="paused" className="text-h2 m-0">
+        <h2 id="paused" className="text-section m-0">
           Paused sites
         </h2>
         {paused.length === 0 ? (
@@ -205,7 +208,7 @@ export default async function StaffPage({ searchParams }: Props) {
             >
               <h3
                 id={`paused-${site.siteId}`}
-                className="m-0 text-lg break-all"
+                className="text-item m-0 break-all"
               >
                 {siteAddress(site.handle)}
               </h3>
@@ -253,7 +256,7 @@ export default async function StaffPage({ searchParams }: Props) {
       </section>
 
       <section aria-labelledby="log" className="flex flex-col gap-4">
-        <h2 id="log" className="text-h2 m-0">
+        <h2 id="log" className="text-section m-0">
           Log
         </h2>
         {log.length === 0 ? (

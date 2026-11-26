@@ -50,7 +50,7 @@ export default async function ReportPage({ params, searchParams }: Props) {
   if (!site && done !== 'sent')
     return (
       <PageShell>
-        <h1 className="text-h1 m-0">Report a page</h1>
+        <h1 className="text-title-lg m-0">Report a page</h1>
         <p className="m-0">
           There’s no live page at {address}, so there’s nothing to report.
         </p>
@@ -59,7 +59,7 @@ export default async function ReportPage({ params, searchParams }: Props) {
 
   return (
     <PageShell>
-      <h1 className="text-h1 m-0">Report a page</h1>
+      <h1 className="text-title-lg m-0">Report a page</h1>
       <p role="status" className="m-0 font-semibold empty:hidden">
         {said}
       </p>

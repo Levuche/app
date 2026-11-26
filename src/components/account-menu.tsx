@@ -31,7 +31,7 @@ export function AccountMenu({ name, email }: { name: string; email: string }) {
       <div
         id={id}
         popover="auto"
-        className="bg-lv-card text-lv-text border-lv-border right-gutter inset-auto top-16 m-0 w-64 max-w-[calc(100vw-2rem)] rounded-2xl border p-2 shadow-lg"
+        className="bg-lv-card text-lv-text border-lv-border right-gutter inset-auto top-14 m-0 w-64 max-w-[calc(100vw-2rem)] rounded-2xl border p-2 shadow-lg"
       >
         <p className="text-lv-text-2 m-0 truncate px-3 pt-1 pb-2 text-sm">
           {email}

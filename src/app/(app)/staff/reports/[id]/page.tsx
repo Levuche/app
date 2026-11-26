@@ -50,11 +50,14 @@ export default async function ReportedPage({ params }: Props) {
         </Link>
       </div>
       {page ? (
-        <CreatorPage
-          blocks={pageBlocks(page.blocks)}
-          frame={page.frame}
-          layouts={page.layouts as PageLayouts}
-        />
+        // Back to the size the page has on levuche.page, out of the app's.
+        <div className="text-base">
+          <CreatorPage
+            blocks={pageBlocks(page.blocks)}
+            frame={page.frame}
+            layouts={page.layouts as PageLayouts}
+          />
+        </div>
       ) : (
         <p className="px-gutter">This copy has no page to show.</p>
       )}

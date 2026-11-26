@@ -13,16 +13,16 @@ export default async function Home() {
   if (sites.length === 1) redirect(`/sites/${sites[0].workspaceId}`);
 
   return (
-    <main className="px-gutter max-w-layout mx-auto flex w-full flex-1 flex-col gap-6 py-12">
-      <h1 className="text-h1 m-0">Your sites</h1>
-      <ul className="m-0 grid list-none gap-4 p-0 sm:grid-cols-2 lg:grid-cols-3">
+    <main className="px-gutter max-w-layout py-page mx-auto flex w-full flex-1 flex-col gap-5">
+      <h1 className="text-title m-0">Your sites</h1>
+      <ul className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2 lg:grid-cols-3">
         {sites.map((site) => (
           <li key={site.workspaceId}>
             <Link
               href={`/sites/${site.workspaceId}`}
-              className="bg-lv-card border-lv-border hover:border-lv-link rounded-card p-card flex flex-col gap-1 border-2 no-underline"
+              className="bg-lv-card border-lv-border hover:border-lv-link rounded-box p-box flex flex-col gap-1 border-2 no-underline"
             >
-              <span className="text-h4 text-lv-text break-words">
+              <span className="text-item text-lv-text break-words">
                 {site.name}
               </span>
               <span className="text-lv-text-2 text-sm">

@@ -14,8 +14,8 @@ export const metadata: Metadata = { title: 'Sign in' };
 export default function Unauthorized() {
   return (
     <PageShell>
-      <h1 className="text-h1 m-0">Sign in to Levuche</h1>
-      <p className="text-lead text-lv-text-2 m-0">
+      <h1 className="text-title-lg m-0">Sign in to Levuche</h1>
+      <p className="text-lv-text-2 m-0">
         Build your page, sell what you make and see how it&apos;s going. New
         here? Signing in creates your account.
       </p>

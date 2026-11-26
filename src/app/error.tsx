@@ -17,7 +17,7 @@ export default function ErrorPage({
 
   return (
     <PageShell>
-      <h1 className="text-h1 m-0">Something went wrong</h1>
+      <h1 className="text-title-lg m-0">Something went wrong</h1>
       <p className="text-lv-text-2 m-0">
         Please try again. If it keeps happening, tell us at levuche.com/contact
         {error.digest ? ` and mention code ${error.digest}` : ''}.

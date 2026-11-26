@@ -8,7 +8,7 @@ const looks = {
 
 /**
  * The app's buttons, in Levuche's product colours (creator pages use the
- * blocks' own SiteButton instead). Pill-shaped, at least 40 px tall with a
+ * blocks' own SiteButton instead). Pill-shaped, 14 px text, at least 40 px tall with a
  * mouse and 44 px on touch screens.
  */
 export function buttonClasses(
@@ -16,7 +16,7 @@ export function buttonClasses(
   className?: string
 ) {
   return cn(
-    'min-h-control inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border-2 px-5 font-[inherit] text-sm font-bold no-underline transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 aria-busy:cursor-progress motion-reduce:transition-none',
+    'min-h-control inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border-2 px-4 font-[inherit] text-sm font-bold no-underline transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 aria-busy:cursor-progress motion-reduce:transition-none',
     looks[look],
     className
   );
