@@ -4,10 +4,23 @@ import { ApiVersion } from '@buildbase/sdk';
 import { SaaSOSProvider } from '@buildbase/sdk/react';
 import { captureReferral } from '@buildbase/sdk/tracking';
 import { buildbaseEnvironmentId } from '@levuche/kit';
+import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { buildbase, isAuthConfigured } from '@/lib/buildbase-config';
 
 const json = { 'Content-Type': 'application/json' };
+
+/**
+ * Buildbase's own screens, trimmed to how the app uses workspaces: a site is
+ * made through the app (src/app/(app)/new) and deleted through #26, so the
+ * switcher's "Create workspace" and the settings' danger zone are hidden,
+ * and no plan picker opens by itself (a page is bought on its own, #19).
+ */
+const ui = {
+  workspaceSwitcher: { createButton: false },
+  settings: { sections: { danger: false } },
+  behavior: { autoOpenPlanDialog: false },
+};
 
 /** POSTs JSON to one of the app's /api/auth routes. */
 async function post(path: string, body: unknown) {
@@ -33,6 +46,7 @@ async function post(path: string, body: unknown) {
  * set up in the environment.
  */
 export function BuildbaseProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   useEffect(() => {
     const orgId = buildbaseEnvironmentId(buildbase);
     if (orgId) void captureReferral({ serverUrl: buildbase.serverUrl, orgId });
@@ -46,6 +60,7 @@ export function BuildbaseProvider({ children }: { children: React.ReactNode }) {
       version={ApiVersion.V1}
       orgId={buildbase.orgId}
       environment={buildbase.environment}
+      ui={ui}
       auth={{
         clientId: buildbase.clientId,
         redirectUrl: buildbase.redirectUrl,
@@ -63,6 +78,12 @@ export function BuildbaseProvider({ children }: { children: React.ReactNode }) {
           },
           onSignOut: async () => {
             await post('signout', {});
+          },
+          // A rename, a teammate or a role changed in Buildbase's screens:
+          // render the server's pages again with the new names and roles.
+          // Switching sites is the site switcher's (site-switcher.tsx).
+          handleEvent: (event) => {
+            if (event !== 'workspace:changed') router.refresh();
           },
         },
       }}

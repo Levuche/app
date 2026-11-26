@@ -7,9 +7,11 @@ page editor. The marketing site is
 levuche.page are built from [@levuche/ui](https://github.com/Levuche/ui).
 
 Right now it has sign-in with Buildbase ([docs/AUTH.md](docs/AUTH.md)), the
-database for sites and pages ([docs/DATABASE.md](docs/DATABASE.md)) and
-the creator page layout. The dashboard and the editor come next; the plan is
-issue #36.
+database for sites and pages ([docs/DATABASE.md](docs/DATABASE.md)), sites
+as Buildbase workspaces with teammates and roles
+([docs/SITES.md](docs/SITES.md)) and the creator page layout. The dashboard
+and the editor come next; the plan is issue #36. Help for creators is in
+[docs/help](docs/help).
 
 ## Creator pages
 

@@ -1,27 +1,43 @@
-import { requireUser } from '@/lib/buildbase';
-import { site } from '@/lib/site';
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { siteAddress } from '@/lib/handle';
+import { listSites } from '@/lib/sites';
 
+/**
+ * Where signing in lands: a new creator goes on to make a site, and someone
+ * with one site goes straight to it.
+ */
 export default async function Home() {
-  // The layout's check, cached for this request: no second lookup.
-  const firstName = (await requireUser()).name?.trim().split(/\s+/)[0];
+  const sites = await listSites();
+  if (sites.length === 0) redirect('/new');
+  if (sites.length === 1) redirect(`/sites/${sites[0].workspaceId}`);
 
   return (
-    <main className="px-gutter max-w-form mx-auto flex w-full flex-1 flex-col justify-center gap-4 py-16">
-      <h1 className="text-h1 m-0">
-        {firstName ? `Welcome, ${firstName}` : 'Welcome'}
-      </h1>
-      <p className="text-lead text-lv-text-2 m-0">
-        Your dashboard is on its way. This is where you&apos;ll build your
-        pages, sell and get paid.
-      </p>
-      <p className="m-0">
-        <a
-          href={site.websiteUrl}
-          className="text-lv-link font-semibold underline-offset-4 hover:underline"
-        >
-          Go to levuche.com
-        </a>
-      </p>
+    <main className="px-gutter max-w-layout mx-auto flex w-full flex-1 flex-col gap-6 py-12">
+      <h1 className="text-h1 m-0">Your sites</h1>
+      <ul className="m-0 grid list-none gap-4 p-0 sm:grid-cols-2 lg:grid-cols-3">
+        {sites.map((site) => (
+          <li key={site.workspaceId}>
+            <Link
+              href={`/sites/${site.workspaceId}`}
+              className="bg-lv-card border-lv-border hover:border-lv-link rounded-card p-card flex flex-col gap-1 border-2 no-underline"
+            >
+              <span className="text-h4 text-lv-text break-words">
+                {site.name}
+              </span>
+              <span className="text-lv-text-2 text-sm">
+                {siteAddress(site.handle)}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <Link
+        href="/new"
+        className="text-lv-link self-start font-semibold underline-offset-4 hover:underline"
+      >
+        Make another site
+      </Link>
     </main>
   );
 }

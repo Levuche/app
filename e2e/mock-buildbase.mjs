@@ -1,17 +1,27 @@
-// A stand-in for Buildbase's API in the end-to-end tests, so sign-in can be
-// tested without real accounts. It knows one code and one session:
+// A stand-in for Buildbase's API in the end-to-end tests, so sign-in and
+// workspaces can be tested without real accounts:
 //
 // - POST /api/v1/auth/request (the Sign in button) answers this server's own
 //   /hosted page, which sends the browser straight back to the app with the
 //   test code, as Buildbase's hosted page does once someone signs in.
 // - POST /api/v1/auth/token with that code answers session "e2e-session".
-// - GET .../profile with x-session-id "e2e-session" answers the test creator;
-//   any other session gets 401, as Buildbase does for an ended session.
+// - GET .../profile answers the creator behind x-session-id. Any session
+//   that starts "e2e-" is a creator of its own, so each test can start with
+//   no sites; any other session gets 401, as Buildbase does for an ended one.
 // - POST .../logout answers success.
+// - GET .../<org>/settings answers the organization's settings as the
+//   Buildbase development environment has them. The SDK's workspace switcher
+//   waits for these: without them it keeps asking and never opens.
+// - .../workspaces: list, create (409 for a name the creator already has),
+//   get, permissions/me and delete, for members only (403 otherwise), with
+//   the roles and permission set up in the Buildbase development environment.
+// - POST /e2e/members { workspaceId, session, role } adds a teammate, as an
+//   accepted invitation would. Test only.
 //
-// Answers to the auth routes come in Buildbase's { success, data } wrapper,
-// which the SDK reads them through. Anything else answers 404. Every request
-// is logged, so the test output shows what the app asked for.
+// Answers have Buildbase's shapes: the auth routes and permissions/me in its
+// { success, data } wrapper, the rest bare. Anything else answers 404. Every request is logged, so the
+// test output shows what the app asked for.
+import { createHash, randomBytes } from 'node:crypto';
 import { createServer } from 'node:http';
 
 // The same values are in e2e/auth.spec.ts.
@@ -23,6 +33,64 @@ const CREATOR = {
   email: 'sam@example.com',
   role: 'user',
 };
+
+/** The creator behind a session, or undefined for an ended one. */
+function creator(session) {
+  if (session === SESSION) return CREATOR;
+  if (!session?.startsWith('e2e-')) return undefined;
+  const id = createHash('sha256').update(session).digest('hex').slice(0, 24);
+  return { ...CREATOR, id, email: `${id}@example.com` };
+}
+
+// The development environment's settings (Settings > Workspaces), with what
+// each role may do (app:site:edit is the app's own permission).
+const SETTINGS = {
+  billing: { onboarding: { mode: 'none' } },
+  workspace: {
+    mode: 'platform',
+    roles: ['admin', 'editor', 'viewer'],
+    defaultRole: 'viewer',
+    autoCreateFirst: false,
+    canCreateWorkspace: true,
+    canInviteMembers: true,
+    showSwitcher: true,
+    maxWorkspaces: 20,
+    maxWorkspacesPerUser: 5,
+    maxWorkspaceUsers: 10,
+    customPermissions: [
+      { key: 'app:site:edit', label: 'Edit the site', group: 'Site' },
+    ],
+    permissions: {
+      admin: [
+        'workspace:settings:view',
+        'workspace:settings:edit',
+        'workspace:members:view',
+        'workspace:members:invite',
+        'workspace:members:remove',
+        'workspace:members:role-change',
+        'workspace:billing:view',
+        'workspace:billing:manage',
+        'app:site:edit',
+      ],
+      editor: [
+        'workspace:settings:view',
+        'workspace:members:view',
+        'workspace:billing:view',
+        'app:site:edit',
+      ],
+      viewer: ['workspace:settings:view', 'workspace:members:view'],
+    },
+  },
+};
+const PERMISSIONS = SETTINGS.workspace.permissions;
+
+/** Workspace id -> { workspace, roles: Map of user id -> role }. */
+const workspaces = new Map();
+const role = (id, user) => workspaces.get(id)?.roles.get(user.id);
+const mine = (user) =>
+  [...workspaces.values()]
+    .filter(({ roles }) => roles.has(user.id))
+    .map(({ workspace }) => workspace);
 
 const cors = {
   'Access-Control-Allow-Origin': 'http://localhost:3100',
@@ -86,13 +154,68 @@ createServer(async (req, res) => {
       ? send(res, 200, { success: true, data: { sessionId: SESSION } })
       : send(res, 400, { message: 'That sign-in code has expired' });
   }
+  if (req.method === 'POST' && path === '/e2e/members') {
+    const { workspaceId, session, role: given } = await readJson(req);
+    const user = creator(session);
+    if (!user || !workspaces.has(workspaceId)) return send(res, 404, {});
+    workspaces.get(workspaceId).roles.set(user.id, given);
+    return send(res, 200, { success: true });
+  }
+
+  const user = creator(req.headers['x-session-id']);
+  if (
+    req.method === 'GET' &&
+    /^\/api\/v1\/public\/(?!workspaces\/)[\w-]+\/settings$/.test(path)
+  ) {
+    return send(res, 200, SETTINGS);
+  }
   if (req.method === 'GET' && path.endsWith('/profile')) {
-    return req.headers['x-session-id'] === SESSION
-      ? send(res, 200, CREATOR)
+    return user
+      ? send(res, 200, user)
       : send(res, 401, { message: 'Session expired' });
   }
   if (req.method === 'POST' && path.endsWith('/logout')) {
     return send(res, 200, { success: true });
+  }
+
+  const [, id, rest = ''] =
+    path.match(/\/workspaces(?:\/([0-9a-f]{24}))?(\/permissions\/me)?$/) ?? [];
+  if (path.endsWith('/workspaces') || id) {
+    if (!user) return send(res, 401, { message: 'Session expired' });
+    if (!id && req.method === 'GET') return send(res, 200, mine(user));
+    if (!id && req.method === 'POST') {
+      const { name } = await readJson(req);
+      if (mine(user).some((w) => w.name === name))
+        return send(res, 409, { message: 'You already have that name' });
+      const _id = randomBytes(12).toString('hex');
+      const workspace = {
+        _id,
+        workspaceId: _id,
+        name,
+        users: [user],
+        roles: SETTINGS.workspace.roles,
+        createdBy: user.id,
+        features: {},
+      };
+      workspaces.set(_id, { workspace, roles: new Map([[user.id, 'admin']]) });
+      return send(res, 200, workspace);
+    }
+    const given = role(id, user);
+    if (!given) return send(res, 403, { message: 'Not a member' });
+    if (rest && req.method === 'GET') {
+      const isOwner = workspaces.get(id).workspace.createdBy === user.id;
+      return send(res, 200, {
+        success: true,
+        data: { role: given, isOwner, permissions: PERMISSIONS[given] },
+      });
+    }
+    if (req.method === 'GET')
+      return send(res, 200, workspaces.get(id).workspace);
+    if (req.method === 'DELETE' && given === 'admin') {
+      workspaces.delete(id);
+      return send(res, 200, { deleted: true });
+    }
+    return send(res, 403, { message: 'Not allowed' });
   }
 
   send(res, 404, { message: 'Not in the test server' });
