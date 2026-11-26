@@ -108,7 +108,9 @@ test('a page is bought before it first goes live', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Publish' })).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Buy for $9.00' }).click();
-  await page.getByRole('button', { name: 'Pay' }).click();
+  // Wait for the checkout page, so Pay is pressed there and not mid-way.
+  await expect(page.getByRole('heading', { name: 'Pay $9.00' })).toBeVisible();
+  await page.getByRole('button', { name: 'Pay', exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/sites/${id}/publish\\?done=paid`));
   await expect(page.getByRole('status').first()).toHaveText(
     'Thanks, your page is bought. Publish it whenever you’re ready.'
