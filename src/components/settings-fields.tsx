@@ -1,7 +1,7 @@
 'use client';
 
 import type { ChoiceValue, SettingField } from '@levuche/ui';
-import { useId } from 'react';
+import { createContext, useContext, useId, useRef, useState } from 'react';
 import { buttonClasses } from '@/lib/button';
 
 /*
@@ -11,6 +11,18 @@ import { buttonClasses } from '@/lib/button';
  */
 
 type Values = Record<string, unknown>;
+
+/**
+ * Uploads a picture for a field (#24) and answers its address, or why it
+ * didn't upload. Given by the editor; without it, pictures are addresses
+ * only.
+ */
+export type UploadPicture = (
+  file: File,
+  field: string
+) => Promise<{ url: string } | { error: string }>;
+
+export const PictureUploads = createContext<UploadPicture | null>(null);
 
 const control =
   'min-h-control border-lv-border bg-lv-card text-lv-text w-full rounded-xl border-2 px-3 text-base focus-visible:border-lv-primary';
@@ -86,6 +98,7 @@ function SettingControl({
   unsetLabel?: string;
 }) {
   const id = useId();
+  const upload = useContext(PictureUploads);
   const helpId = `${id}-help`;
   const described = field.help ? helpId : undefined;
   const fallback = 'default' in field ? field.default : undefined;
@@ -122,8 +135,17 @@ function SettingControl({
           />
           {field.type === 'picture' && !field.help ? (
             <p className="text-lv-text-2 m-0 text-sm">
-              The picture&apos;s address, starting https://
+              {upload && !disabled
+                ? 'Upload a picture, or paste its address, starting https://'
+                : 'The picture’s address, starting https://'}
             </p>
+          ) : null}
+          {field.type === 'picture' && upload && !disabled ? (
+            <PictureUpload
+              field={field}
+              upload={upload}
+              onUploaded={onChange}
+            />
           ) : null}
           <Help id={helpId} field={field} />
         </div>
@@ -392,4 +414,71 @@ function SettingControl({
     default:
       return null;
   }
+}
+
+/** The button to upload a picture for a field, with how it went. */
+function PictureUpload({
+  field,
+  upload,
+  onUploaded,
+}: {
+  field: SettingField;
+  upload: UploadPicture;
+  onUploaded: (url: string) => void;
+}) {
+  const id = useId();
+  const input = useRef<HTMLInputElement>(null);
+  const [state, setState] = useState<
+    | { kind: 'idle' }
+    | { kind: 'uploading' }
+    | { kind: 'done' }
+    | { kind: 'error'; message: string }
+  >({ kind: 'idle' });
+
+  async function send(file: File | undefined) {
+    if (!file) return;
+    setState({ kind: 'uploading' });
+    const result = await upload(file, field.name);
+    if (input.current) input.current.value = '';
+    if ('error' in result) setState({ kind: 'error', message: result.error });
+    else {
+      onUploaded(result.url);
+      setState({ kind: 'done' });
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <input
+        ref={input}
+        id={id}
+        type="file"
+        accept="image/*"
+        className="peer sr-only"
+        disabled={state.kind === 'uploading'}
+        onChange={(e) => void send(e.target.files?.[0])}
+      />
+      <label
+        htmlFor={id}
+        className={buttonClasses(
+          'outline',
+          'peer-focus-visible:outline-lv-primary cursor-pointer self-start peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-disabled:cursor-wait'
+        )}
+      >
+        Upload {field.label.toLowerCase()}
+      </label>
+      <p
+        role="status"
+        className={`m-0 text-sm empty:hidden ${state.kind === 'error' ? 'text-lv-danger font-semibold' : 'text-lv-text-2'}`}
+      >
+        {state.kind === 'uploading'
+          ? 'Uploading…'
+          : state.kind === 'done'
+            ? 'Uploaded.'
+            : state.kind === 'error'
+              ? state.message
+              : ''}
+      </p>
+    </div>
+  );
 }

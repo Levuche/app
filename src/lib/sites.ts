@@ -9,6 +9,7 @@ import { cache } from 'react';
 import { isPaid, siteOffer } from '@/lib/billing';
 import { bb, requireUser } from '@/lib/buildbase';
 import { type Site, siteStore } from '@/lib/db';
+import type { FileBucket } from '@/lib/files';
 
 /** The app's own Buildbase permission to change a site: admins and editors. */
 export const SITE_EDIT = 'app:site:edit';
@@ -20,6 +21,12 @@ export type CreatorSite = Site &
 export async function database() {
   const { env } = await getCloudflareContext({ async: true });
   return (env as unknown as { DB: D1Database }).DB;
+}
+
+/** The bucket uploaded pictures are kept in (the FILES binding, #24). */
+export async function fileBucket() {
+  const { env } = await getCloudflareContext({ async: true });
+  return (env as unknown as { FILES: FileBucket }).FILES;
 }
 
 const withWorkspace = (

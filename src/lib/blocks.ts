@@ -15,6 +15,7 @@ import {
   type BlockKind,
   type SettingField,
 } from '@levuche/ui';
+import { appUrl } from './site';
 
 /**
  * The blocks R1 offers, in the order the "Add a block" menu lists them: the
@@ -140,10 +141,21 @@ export function savedProps(
   return JSON.parse(json);
 }
 
+/**
+ * A picture uploaded to this app (#24): always on https in production, and
+ * on the app's own address when it runs on a computer for tests.
+ */
+const isOwnPicture = (value: string) =>
+  value.startsWith(`${appUrl}/files/`) &&
+  /^[0-9a-f-]{36}$/.test(value.slice(appUrl.length + 7));
+
 /** Addresses on the page: a link must be safe, a picture on https. */
 function fitsValue(field: SettingField, value: unknown): boolean {
   if (field.type === 'picture')
-    return typeof value === 'string' && /^https:\/\/\S+$/i.test(value.trim());
+    return (
+      typeof value === 'string' &&
+      (/^https:\/\/\S+$/i.test(value.trim()) || isOwnPicture(value))
+    );
   if (field.type === 'link') return isSafeHref(value as string);
   if (field.type === 'text' || field.type === 'longText')
     return typeof value === 'string' && value.trim() !== '';

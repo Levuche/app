@@ -149,3 +149,58 @@ test('a viewer sees the page but cannot change it', async ({
   await expect(page.getByLabel('Add a block')).toHaveCount(0);
   await expect(page.getByLabel(/^Name \(needed\)$/)).toBeDisabled();
 });
+
+// A 1×1 PNG, as a camera roll might hand it over.
+const PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+  'base64'
+);
+
+test('a creator uploads a profile picture (#24)', async ({ page, request }) => {
+  await signInAs(page, newCreator());
+  await makeSite(page, 'Asha paints');
+  await page.getByRole('link', { name: 'Edit your page' }).click();
+  await page
+    .locator('[data-editor-block="creator-header"]')
+    .getByRole('button')
+    .first()
+    .click();
+
+  // Something that isn't a picture is turned away in plain words.
+  await page.getByLabel('Upload profile picture').setInputFiles({
+    name: 'notes.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from('not a picture'),
+  });
+  await expect(
+    page.getByRole('status').filter({ hasText: 'JPEG' })
+  ).toBeVisible();
+
+  // A picture uploads, fills the field and shows in the preview.
+  await page.getByLabel('Upload profile picture').setInputFiles({
+    name: 'me.png',
+    mimeType: 'image/png',
+    buffer: PNG,
+  });
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Uploaded.' })
+  ).toBeVisible();
+  const field = page.getByLabel(/^Profile picture/);
+  await expect(field).toHaveValue(new RegExp(`^${APP}/files/[0-9a-f-]{36}$`));
+  const address = await field.inputValue();
+  await saved(page);
+  await expect(
+    page.locator('[data-preview-screen] img[src*="/files/"]')
+  ).toHaveCount(1);
+
+  // The picture is served from the app, kept long and never run as a page.
+  const picture = await request.get(address);
+  expect(picture.status()).toBe(200);
+  expect(picture.headers()['content-type']).toMatch(/^image\/(webp|png|jpeg)$/);
+  expect(picture.headers()['content-security-policy']).toContain('sandbox');
+  expect(picture.headers()['cache-control']).toContain('immutable');
+
+  // A picture that isn't kept isn't there.
+  const missing = await request.get(`${APP}/files/${randomUUID()}`);
+  expect(missing.status()).toBe(404);
+});

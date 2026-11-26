@@ -1,7 +1,14 @@
 'use server';
 
 import { savedProps, isEditorBlock, newBlockProps } from '@/lib/blocks';
+import { requireUser } from '@/lib/buildbase';
 import { type Block, MAX_BLOCKS, siteStore } from '@/lib/db';
+import { startUpload } from '@/lib/files';
+import {
+  megabytes,
+  MAX_PICTURE_BYTES,
+  SITE_STORAGE_BYTES,
+} from '@/lib/pictures';
 import { database, getSite, SITE_EDIT } from '@/lib/sites';
 
 /*
@@ -81,4 +88,33 @@ export async function moveBlock(
   return (await edit.store.moveBlock(blockId, to))
     ? { ok: true }
     : { error: 'This block is gone. Reload the page.' };
+}
+
+const UPLOAD_ERRORS = {
+  'wrong-type':
+    'This picture’s type can’t be used. Use a JPEG, PNG or WebP picture.',
+  'too-big': `This picture is too big. Use one under ${megabytes(MAX_PICTURE_BYTES)}.`,
+  full: `Your site’s ${megabytes(SITE_STORAGE_BYTES)} of pictures is full. Take out pictures you don’t use and publish, then try again.`,
+};
+
+/**
+ * An address to send one picture to (#24), for ten minutes, once the type,
+ * size and the site's storage have been checked. The picture then goes
+ * straight from the browser to src/app/api/uploads/[token]/route.ts.
+ */
+export async function startPictureUpload(
+  workspaceId: string,
+  picture: { type: string; bytes: number }
+): Promise<EditResult<{ address: string }>> {
+  const edit = await editableStore(workspaceId);
+  if (!edit) return { error: NOT_ALLOWED };
+  const user = await requireUser();
+  const started = await startUpload(await database(), {
+    siteId: edit.site.id,
+    type: picture?.type,
+    bytes: picture?.bytes,
+    by: user.id,
+  });
+  if ('error' in started) return { error: UPLOAD_ERRORS[started.error] };
+  return { ok: { address: `/api/uploads/${started.token}` } };
 }

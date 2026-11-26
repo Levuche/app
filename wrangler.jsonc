@@ -37,6 +37,9 @@
       "migrations_dir": "migrations",
     },
   ],
+  // Pictures creators upload (#24): the bytes, under files/<id>. Rows in
+  // the database say whose they are (migrations/0005_files.sql).
+  "r2_buckets": [{ "binding": "FILES", "bucket_name": "levuche-files" }],
   // Production: app.levuche.com only (no workers.dev address). The
   // levuche.com zone is on the same Cloudflare account as the website.
   "routes": [{ "pattern": "app.levuche.com", "custom_domain": true }],
@@ -67,6 +70,9 @@
           "database_id": "4ee5a7b5-da54-41f2-920f-fff0a7f0bbea",
           "migrations_dir": "migrations",
         },
+      ],
+      "r2_buckets": [
+        { "binding": "FILES", "bucket_name": "levuche-files-dev" },
       ],
     },
   },
