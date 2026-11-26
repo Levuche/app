@@ -72,8 +72,22 @@ overview. Admins and editors publish; viewers see the versions.
   block that isn't ready as "Needs a fix", with a link that opens the
   editor on that block (`?block=<id>`): needed fields left empty, list
   items half filled in, links that won't open and pictures not on https.
-  Publish shows only when the list is empty. Paying for the site (#19)
-  joins these checks.
+  Publish shows only when the list is empty.
+- **Buying the page (#19):** a site goes live only once its workspace
+  holds the `site` feature, as Buildbase composes its entitlement
+  (`isPaid` in `src/lib/billing.ts`; anything but an explicit yes is no).
+  Publishing, "Make live" and "Put back online" all check it on the
+  server. Until then the publish page shows "Buy your page to publish it"
+  with the price Buildbase offers. The add-on is found by what it grants
+  (the `site` feature), so its slug, name, price and terms live in
+  Buildbase (Billing > Add-ons), never in the code. "Buy for …" (admins,
+  who hold `workspace:billing:manage`) opens Buildbase's checkout and
+  comes back to the publish page with `?done=paid` or `?done=not-paid`;
+  editors are asked to get an admin to buy it. Building, editing and the
+  private preview link stay free. Receipts are under "Billing and
+  receipts" on the overview, Buildbase's own subscription screen. The
+  levuche.page Worker checks the same feature before serving a live site
+  (#23).
 - **Publishing** copies the draft into the next numbered version with an
   optional note and makes it live (`siteStore.publish`). An offline site
   stays offline, with the new version ready for when it's put back; a

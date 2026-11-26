@@ -1,13 +1,20 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { CopyAddress } from '@/components/copy-address';
+import {
+  BILLING_MANAGE,
+  formatPrice,
+  priceWords,
+  whyNotForSale,
+} from '@/lib/billing';
 import { requireUser } from '@/lib/buildbase';
 import { buttonClasses } from '@/lib/button';
 import { hasDraftChanges, siteStore } from '@/lib/db';
+import { siteAddress } from '@/lib/handle';
 import { publishProblems } from '@/lib/publish';
 import { appUrl } from '@/lib/site';
-import { database, getSite, SITE_EDIT } from '@/lib/sites';
-import { publishSite, rollbackSite, setPreviewLink } from './actions';
+import { database, getSite, SITE_EDIT, siteAddOn } from '@/lib/sites';
+import { buySite, publishSite, rollbackSite, setPreviewLink } from './actions';
 
 type Props = {
   params: Promise<{ workspaceId: string }>;
@@ -29,8 +36,22 @@ const when = (iso: string) =>
 const link = 'text-lv-link font-semibold underline-offset-4 hover:underline';
 
 /** What the last action did, from ?done= (set by ./actions.ts). */
-function outcome(done: string | undefined, offline: boolean) {
+function outcome(
+  done: string | undefined,
+  { offline, paid }: { offline: boolean; paid: boolean }
+) {
   const [kind, number] = done?.split(/-(?=\d+$)/) ?? [];
+  if (done === 'paid')
+    return paid
+      ? 'Thanks, your page is bought. Publish it whenever you’re ready.'
+      : 'Thanks. Your payment is still being confirmed, so reload this page in a moment.';
+  if (done === 'not-paid')
+    return 'You didn’t finish paying, so nothing was charged.';
+  if (done === 'needs-buying')
+    return 'Buy your page first, then it can go live.';
+  if (done === 'not-for-sale') return whyNotForSale(null);
+  if (done === 'not-bought')
+    return 'The checkout didn’t open. Reload the page and try again.';
   if (kind === 'published')
     return offline
       ? `Version ${number} is ready. Your site is offline, so visitors see it once you put it back.`
@@ -46,14 +67,14 @@ function outcome(done: string | undefined, offline: boolean) {
 }
 
 /**
- * Publishing a site (#21): the checks its draft has to pass, the Publish
- * button with a note, a private preview link to the draft, and the version
+ * Publishing a site (#21): the checks its draft has to pass, buying the
+ * page before it first goes live (#19), the Publish button with a note, a private preview link to the draft, and the version
  * history with a way to make an older version live again.
  */
 export default async function PublishPage({ params, searchParams }: Props) {
   const { workspaceId } = await params;
   const { done } = await searchParams;
-  const [{ site, can, memberNames }, user] = await Promise.all([
+  const [{ site, can, paid, memberNames }, user] = await Promise.all([
     getSite(workspaceId),
     requireUser(),
   ]);
@@ -66,10 +87,14 @@ export default async function PublishPage({ params, searchParams }: Props) {
   const fixes = draft ? publishProblems(draft) : [];
   const editable = can(SITE_EDIT);
   const canPublish = ['unpublished', 'live', 'offline'].includes(site.status);
-  const said = outcome(
-    Array.isArray(done) ? done[0] : done,
-    site.status === 'offline'
-  );
+  const said = outcome(Array.isArray(done) ? done[0] : done, {
+    offline: site.status === 'offline',
+    paid,
+  });
+  const mustBuy = editable && canPublish && !paid && fixes.length === 0;
+  const offer = mustBuy ? await siteAddOn(workspaceId) : null;
+  const price = offer ? priceWords(offer) : null;
+  const cost = offer?.price ? formatPrice(offer.price) : null;
   const previewUrl = token ? `${appUrl}/draft/${token}` : null;
   const hidden = <input type="hidden" name="workspaceId" value={workspaceId} />;
   const who = (id: string) =>
@@ -133,7 +158,43 @@ export default async function PublishPage({ params, searchParams }: Props) {
                   ? `Your draft has changes that visitors don’t see yet. Version ${site.liveVersion} is live.`
                   : `Nothing has changed since version ${site.liveVersion}.`}
             </p>
-            {editable && canPublish ? (
+            {mustBuy ? (
+              <div
+                data-buy
+                className="border-lv-border rounded-card p-card flex flex-col gap-3 border-2"
+              >
+                <h3 className="m-0 text-lg font-bold">
+                  Buy your page to publish it
+                </h3>
+                <p className="m-0">
+                  Building and the preview link are free. Putting your page at{' '}
+                  {siteAddress(site.handle)} for everyone to see takes buying it
+                  {price ? `: ${price}` : ''}.
+                </p>
+                {!can(BILLING_MANAGE) ? (
+                  <p className="m-0">
+                    Ask an admin of this site to buy it. Then you can publish.
+                  </p>
+                ) : offer?.purchasable && cost ? (
+                  <form action={buySite} className="flex flex-col gap-2">
+                    {hidden}
+                    <button
+                      type="submit"
+                      className={buttonClasses('primary', 'self-start')}
+                    >
+                      Buy for {cost}
+                    </button>
+                    <p className="text-lv-text-2 m-0 text-sm">
+                      You pay on a secure checkout page, then come back here to
+                      publish. Your receipt is kept under Billing and receipts
+                      in your site&apos;s settings.
+                    </p>
+                  </form>
+                ) : (
+                  <p className="m-0">{whyNotForSale(offer)}</p>
+                )}
+              </div>
+            ) : editable && canPublish ? (
               <form action={publishSite} className="flex flex-col gap-3">
                 {hidden}
                 <div className="flex flex-col gap-1.5">

@@ -17,6 +17,12 @@
 //   the roles and permission set up in the Buildbase development environment.
 // - POST /e2e/members { workspaceId, session, role } adds a teammate, as an
 //   accepted invitation would. Test only.
+// - .../workspaces/<id>/billing/offers lists the one add-on that sells a
+//   site (#19): $9.00, paid once, switching the `site` feature on. Its
+//   checkout (POST .../billing/checkout, admins only) answers this server's
+//   /checkout page, whose Pay and Cancel buttons send the browser back as
+//   Stripe's page does; paying switches the feature on.
+// - POST /e2e/paid { workspaceId } switches it on without paying. Test only.
 //
 // Answers have Buildbase's shapes: the auth routes and permissions/me in its
 // { success, data } wrapper, the rest bare. Anything else answers 404. Every request is logged, so the
@@ -92,6 +98,37 @@ const mine = (user) =>
     .filter(({ roles }) => roles.has(user.id))
     .map(({ workspace }) => workspace);
 
+// The add-on that sells a site (#19), as set up in the development
+// environment's billing.
+const OFFER = {
+  id: 'offer-site',
+  slug: 'levuche-page',
+  name: 'Levuche page',
+  shape: 'lifetime',
+  items: [{ itemSlug: 'site', itemKind: 'feature', quantityPerUnit: 1 }],
+  maxPerSubject: 1,
+  price: { currency: 'usd', amount: 900 },
+};
+const isPaid = (id) =>
+  workspaces.get(id)?.workspace.entitlement.features.site === true;
+function pay(id) {
+  workspaces.get(id).workspace.entitlement.features.site = true;
+}
+const offers = (id) => ({
+  currency: 'usd',
+  locked: false,
+  offers: [
+    isPaid(id)
+      ? {
+          ...OFFER,
+          held: [{ id: 'grant-1' }],
+          purchasable: false,
+          reason: 'max_per_subject_reached',
+        }
+      : { ...OFFER, held: [], purchasable: true },
+  ],
+});
+
 const cors = {
   'Access-Control-Allow-Origin': 'http://localhost:3100',
   'Access-Control-Allow-Credentials': 'true',
@@ -154,6 +191,32 @@ createServer(async (req, res) => {
       ? send(res, 200, { success: true, data: { sessionId: SESSION } })
       : send(res, 400, { message: 'That sign-in code has expired' });
   }
+  if (req.method === 'POST' && path === '/e2e/paid') {
+    const { workspaceId } = await readJson(req);
+    if (!workspaces.has(workspaceId)) return send(res, 404, {});
+    pay(workspaceId);
+    return send(res, 200, { success: true });
+  }
+  if (req.method === 'GET' && path === '/checkout') {
+    // Stripe's checkout page, as far as the tests need it.
+    const { searchParams } = new URL(req.url, 'http://localhost');
+    const done = new URL('/checkout/done', 'http://localhost:3101');
+    done.search = searchParams.toString();
+    const cancel = searchParams.get('cancel') ?? '';
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    return res.end(
+      `<!doctype html><html lang="en"><title>Test checkout</title><main><h1>Pay $9.00</h1>` +
+        `<form method="post" action="${done.href.replace(/&/g, '&amp;')}"><button>Pay</button></form>` +
+        `<a href="${cancel.replace(/&/g, '&amp;')}">Cancel</a></main></html>`
+    );
+  }
+  if (req.method === 'POST' && path === '/checkout/done') {
+    const { searchParams } = new URL(req.url, 'http://localhost');
+    const workspaceId = searchParams.get('workspace') ?? '';
+    if (workspaces.has(workspaceId)) pay(workspaceId);
+    res.writeHead(303, { Location: searchParams.get('success') ?? '/' });
+    return res.end();
+  }
   if (req.method === 'POST' && path === '/e2e/members') {
     const { workspaceId, session, role: given } = await readJson(req);
     const user = creator(session);
@@ -178,6 +241,36 @@ createServer(async (req, res) => {
     return send(res, 200, { success: true });
   }
 
+  const [, billingId, billing] =
+    path.match(/\/workspaces\/([0-9a-f]{24})\/billing\/(offers|checkout)$/) ??
+    [];
+  if (billingId) {
+    if (!user) return send(res, 401, { message: 'Session expired' });
+    const given = role(billingId, user);
+    if (!given) return send(res, 403, { message: 'Not a member' });
+    if (billing === 'offers' && req.method === 'GET')
+      return send(res, 200, offers(billingId));
+    if (billing === 'checkout' && req.method === 'POST') {
+      if (!PERMISSIONS[given].includes('workspace:billing:manage'))
+        return send(res, 403, { message: 'Not allowed' });
+      const { offerSlug, successUrl, cancelUrl } = await readJson(req);
+      if (offerSlug !== OFFER.slug || isPaid(billingId))
+        return send(res, 409, { reason: 'max_per_subject_reached' });
+      const page = new URL('/checkout', 'http://localhost:3101');
+      page.search = new URLSearchParams({
+        workspace: billingId,
+        success: successUrl,
+        cancel: cancelUrl,
+      }).toString();
+      return send(res, 200, {
+        kind: 'checkout',
+        sessionId: `cs_test_${billingId}`,
+        url: page.href,
+      });
+    }
+    return send(res, 404, { message: 'Not in the test server' });
+  }
+
   const [, id, rest = ''] =
     path.match(/\/workspaces(?:\/([0-9a-f]{24}))?(\/permissions\/me)?$/) ?? [];
   if (path.endsWith('/workspaces') || id) {
@@ -196,6 +289,7 @@ createServer(async (req, res) => {
         roles: SETTINGS.workspace.roles,
         createdBy: user.id,
         features: {},
+        entitlement: { planSlug: null, features: {} },
       };
       workspaces.set(_id, { workspace, roles: new Map([[user.id, 'admin']]) });
       return send(res, 200, workspace);

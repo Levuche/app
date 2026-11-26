@@ -85,8 +85,11 @@ export function SiteSwitcher() {
   );
 }
 
-/** Buildbase's settings for the page's site: its name and picture, and its teammates. */
-export function OpenSiteSettings() {
+/**
+ * Buildbase's settings for the page's site: its name and picture, its
+ * teammates, and for those who may see them its billing and receipts (#19).
+ */
+export function OpenSiteSettings({ billing = false }: { billing?: boolean }) {
   const pageWorkspace = usePageWorkspace();
   const { currentWorkspace } = useSaaSWorkspaces();
   const { openWorkspaceSettings } = useSaaSAuth();
@@ -111,6 +114,16 @@ export function OpenSiteSettings() {
       >
         Teammates
       </button>
+      {billing ? (
+        <button
+          type="button"
+          disabled={!ready}
+          className={buttonClasses('outline')}
+          onClick={() => openWorkspaceSettings('subscription')}
+        >
+          Billing and receipts
+        </button>
+      ) : null}
     </div>
   );
 }

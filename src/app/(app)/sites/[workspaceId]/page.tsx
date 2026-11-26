@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { CopyAddress } from '@/components/copy-address';
 import { OpenSiteSettings } from '@/components/site-switcher';
+import { BILLING_VIEW } from '@/lib/billing';
 import { hasDraftChanges } from '@/lib/db';
 import { siteAddress } from '@/lib/handle';
 import { buttonClasses } from '@/lib/button';
@@ -135,7 +136,7 @@ export default async function SitePage({ params }: Props) {
       >
         {can(SITE_EDIT) ? 'Publish' : 'Versions'}
       </Link>
-      <OpenSiteSettings />
+      <OpenSiteSettings billing={can(BILLING_VIEW)} />
       {/* Until the dashboard's menu has its own place for it (R2). */}
       <Link
         href="/new"

@@ -148,16 +148,21 @@ function makeLive(handle: string) {
 
 test('an admin takes a live site offline and puts it back', async ({
   page,
+  request,
 }) => {
   const handle = newHandle();
   await signInAs(page, newCreator());
   // Not live yet: nothing to take offline.
-  await makeSite(page, 'On and off', handle);
+  const id = await makeSite(page, 'On and off', handle);
   await expect(page.getByRole('button', { name: 'Take offline' })).toHaveCount(
     0
   );
 
   makeLive(handle);
+  // A live site has been bought (#19); going back online checks again.
+  expect(
+    (await request.post(`${MOCK}/e2e/paid`, { data: { workspaceId: id } })).ok()
+  ).toBe(true);
   await page.reload();
   await expect(
     page.getByText('Live, version 1', { exact: true })

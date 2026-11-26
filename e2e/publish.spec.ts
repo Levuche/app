@@ -1,5 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { expect, type Page, test } from '@playwright/test';
+import {
+  type APIRequestContext,
+  expect,
+  type Page,
+  test,
+} from '@playwright/test';
 import { expectNoA11yViolations } from './a11y';
 
 // Publishing (#21) against the stand-in Buildbase server and a local D1
@@ -43,6 +48,14 @@ async function removeEmptyBlocks(page: Page, id: string) {
   }
 }
 
+/** Marks the site bought (#19) in the stand-in Buildbase, without paying. */
+async function markPaid(request: APIRequestContext, id: string) {
+  const paid = await request.post(`${MOCK}/e2e/paid`, {
+    data: { workspaceId: id },
+  });
+  expect(paid.ok()).toBe(true);
+}
+
 async function publish(page: Page, id: string, note = '') {
   await page.goto(`/sites/${id}/publish`);
   if (note) await page.getByLabel('Note (optional)').fill(note);
@@ -70,12 +83,67 @@ test('a draft that needs a fix is listed, with a link to the block', async ({
   ).toBeVisible();
 });
 
+test('a page is bought before it first goes live', async ({ page }) => {
+  await signInAs(page, newCreator());
+  const id = await makeSite(page, 'Paying first');
+  await removeEmptyBlocks(page, id);
+
+  await page.goto(`/sites/${id}/publish`);
+  const buy = page.locator('[data-buy]');
+  await expect(buy).toContainText('Buy your page to publish it');
+  await expect(buy).toContainText('$9.00, paid once');
+  await expect(page.getByRole('button', { name: 'Publish' })).toHaveCount(0);
+  await expectNoA11yViolations(page);
+
+  // Leaving the checkout comes back with nothing bought.
+  await page.getByRole('button', { name: 'Buy for $9.00' }).click();
+  await expect(page.getByRole('heading', { name: 'Pay $9.00' })).toBeVisible();
+  await page.getByRole('link', { name: 'Cancel' }).click();
+  await expect(page.getByRole('status').first()).toHaveText(
+    'You didn’t finish paying, so nothing was charged.'
+  );
+  await expect(page.getByRole('button', { name: 'Publish' })).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Buy for $9.00' }).click();
+  await page.getByRole('button', { name: 'Pay' }).click();
+  await expect(page).toHaveURL(new RegExp(`/sites/${id}/publish\\?done=paid`));
+  await expect(page.getByRole('status').first()).toHaveText(
+    'Thanks, your page is bought. Publish it whenever you’re ready.'
+  );
+  await expect(page.locator('[data-buy]')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Publish', exact: true }).click();
+  await expect(page.getByRole('status').first()).toHaveText(
+    'Version 1 is live.'
+  );
+});
+
+test('an editor asks an admin to buy the page', async ({ page, request }) => {
+  await signInAs(page, newCreator());
+  const id = await makeSite(page, 'Editor waits');
+  await removeEmptyBlocks(page, id);
+
+  const editor = newCreator();
+  const added = await request.post(`${MOCK}/e2e/members`, {
+    data: { workspaceId: id, session: editor, role: 'editor' },
+  });
+  expect(added.ok()).toBe(true);
+  await signInAs(page, editor);
+  await page.goto(`/sites/${id}/publish`);
+  await expect(page.locator('[data-buy]')).toContainText(
+    'Ask an admin of this site to buy it.'
+  );
+  await expect(page.getByRole('button', { name: /^Buy for/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Publish' })).toHaveCount(0);
+});
+
 test('publishing makes a version live, and an older one can go live again', async ({
   page,
+  request,
 }) => {
   await signInAs(page, newCreator());
   const id = await makeSite(page, 'Going live');
   await removeEmptyBlocks(page, id);
+  await markPaid(request, id);
 
   await publish(page, id, 'First go');
   await expect(page.getByRole('status').first()).toHaveText(
@@ -153,6 +221,7 @@ test('a viewer sees the versions but cannot publish', async ({
   await signInAs(page, newCreator());
   const id = await makeSite(page, 'Viewer look');
   await removeEmptyBlocks(page, id);
+  await markPaid(request, id);
   await publish(page, id);
 
   const viewer = newCreator();

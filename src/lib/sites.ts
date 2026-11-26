@@ -6,6 +6,7 @@ import type { D1Database } from '@cloudflare/workers-types';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
+import { isPaid, siteOffer } from '@/lib/billing';
 import { bb, requireUser } from '@/lib/buildbase';
 import { type Site, siteStore } from '@/lib/db';
 
@@ -62,6 +63,11 @@ export const getSite = cache(async (workspaceId: string) => {
   return {
     site: withWorkspace(site, workspace),
     role: me.role,
+    /**
+     * Whether the site has been bought (#19), from Buildbase's answer for
+     * this request: it can't go live until it has.
+     */
+    paid: isPaid(workspace),
     /** The workspace's members' names, by Buildbase user id. */
     memberNames: new Map(
       (workspace.users ?? []).map((user) => [
@@ -74,3 +80,17 @@ export const getSite = cache(async (workspaceId: string) => {
       me.role === 'admin' || me.permissions.includes(permission),
   };
 });
+
+/**
+ * The add-on that sells this site (#19), as Buildbase offers it to the
+ * workspace now, with its price in the workspace's currency. Null when none
+ * is on sale or Buildbase couldn't say.
+ */
+export async function siteAddOn(workspaceId: string) {
+  try {
+    return siteOffer((await bb.addOns.list(workspaceId)).offers ?? []);
+  } catch (error) {
+    console.error('Buildbase did not list the add-ons', error);
+    return null;
+  }
+}
