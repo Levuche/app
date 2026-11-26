@@ -6,9 +6,9 @@ page editor. The marketing site is
 [Levuche/website](https://github.com/Levuche/website); creator sites on
 levuche.page are built from [@levuche/ui](https://github.com/Levuche/ui).
 
-Right now it's the starting point: the Next.js app on Cloudflare Workers with
-its checks, deploys, preview links, tests and the Levuche theme. Sign-in and
-the dashboard come next; see the open issues.
+Right now it has sign-in with Buildbase ([docs/AUTH.md](docs/AUTH.md)) and
+the creator page layout. The dashboard and the editor come next; the plan is
+issue #36.
 
 ## Creator pages
 
@@ -33,7 +33,8 @@ dark colours).
   and dark) from [@levuche/kit](https://github.com/Levuche/kit), installed by
   its release tag
 - Playwright with axe for end-to-end and accessibility tests
-- Buildbase for sign-in, billing and selling (coming with sign-in)
+- Buildbase for sign-in ([docs/AUTH.md](docs/AUTH.md)), and later billing
+  and selling
 
 ## Run it
 
@@ -44,11 +45,14 @@ cp .env.example .env.local
 npm run dev        # http://localhost:3000
 ```
 
-| Command                        | What it does                              |
-| ------------------------------ | ----------------------------------------- |
-| `npm run check`                | ESLint, Prettier and the type check       |
-| `npm run build && npm run e2e` | The end-to-end and accessibility tests    |
-| `npm run cf:preview`           | The Cloudflare Workers build, run locally |
+Without Buildbase settings in `.env.local`, every page says sign-in isn't
+open yet; [docs/AUTH.md](docs/AUTH.md) has the settings.
+
+| Command                            | What it does                                                                   |
+| ---------------------------------- | ------------------------------------------------------------------------------ |
+| `npm run check`                    | ESLint, Prettier and the type check                                            |
+| `npm run e2e:build && npm run e2e` | The end-to-end and accessibility tests, signed in through a stand-in Buildbase |
+| `npm run cf:preview`               | The Cloudflare Workers build, run locally                                      |
 
 ## How work moves
 

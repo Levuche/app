@@ -3,11 +3,14 @@ import { defineConfig, devices } from '@playwright/test';
 /**
  * End-to-end tests (e2e/). Two ways to run them:
  *
- * - Against a local production build: `npm run build`, then `npm run e2e`.
- *   Playwright starts `next start` on port 3100 itself.
+ * - Against a local production build: `npm run e2e:build`, then `npm run e2e`.
+ *   Playwright starts `next start` on port 3100 itself, with sign-in pointed
+ *   at a stand-in Buildbase server on port 3101 (e2e/mock-buildbase.mjs and
+ *   e2e/e2e.env), so signed-in pages are tested without real accounts.
  * - Against a deployed site, such as a pull request's preview link:
  *   `E2E_BASE_URL=https://pr-12-levuche-app-dev.levuche-com.workers.dev npm run e2e`.
- *   Nothing is started locally then.
+ *   Nothing is started locally then, and the tests that need the stand-in
+ *   server are skipped.
  */
 const baseURL = process.env.E2E_BASE_URL?.replace(/\/+$/, '');
 const port = 3100;
@@ -30,10 +33,18 @@ export default defineConfig({
   ],
   webServer: baseURL
     ? undefined
-    : {
-        command: `npx next start -p ${port}`,
-        url: `http://localhost:${port}`,
-        reuseExistingServer: !process.env.CI,
-        timeout: 120_000,
-      },
+    : [
+        {
+          command: 'node e2e/mock-buildbase.mjs',
+          url: 'http://localhost:3101/health',
+          stdout: 'pipe',
+          reuseExistingServer: !process.env.CI,
+        },
+        {
+          command: `set -a && . ./e2e/e2e.env && set +a && npx next start -p ${port}`,
+          url: `http://localhost:${port}/api/health`,
+          reuseExistingServer: !process.env.CI,
+          timeout: 120_000,
+        },
+      ],
 });

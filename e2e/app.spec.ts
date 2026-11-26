@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { expectNoA11yViolations } from './a11y';
 
-test.describe('home', () => {
-  test('loads with a heading and a way back to levuche.com', async ({
-    page,
-  }) => {
+test.describe('home, signed out', () => {
+  test('asks to sign in, with a way back to levuche.com', async ({ page }) => {
     const response = await page.goto('/');
-    expect(response?.status()).toBe(200);
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    expect(response?.status()).toBe(401);
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Sign in to Levuche' })
+    ).toBeVisible();
     await expect(
       page.getByRole('link', { name: 'Go to levuche.com' })
     ).toHaveAttribute('href', 'https://levuche.com');

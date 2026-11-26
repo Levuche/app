@@ -27,6 +27,12 @@ const nextConfig: NextConfig = {
   // @levuche/kit and @levuche/ui ship TypeScript source
   // (github.com/Levuche/kit, github.com/Levuche/ui).
   transpilePackages: ['@levuche/kit', '@levuche/ui'],
+  experimental: {
+    // unauthorized() and src/app/unauthorized.tsx: a signed-out visitor gets
+    // the sign-in screen, with a 401, in place of anything a page renders
+    // (src/lib/buildbase.ts, requireUser).
+    authInterrupts: true,
+  },
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },

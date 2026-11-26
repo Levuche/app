@@ -38,6 +38,12 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
       NEXT_PUBLIC_APP_URL: https://app-dev.levuche.com
+      # Buildbase sign-in (docs/AUTH.md): repository variables. The client
+      # secret is a Worker secret, never here.
+      NEXT_PUBLIC_BUILDBASE_REDIRECT_URL: https://app-dev.levuche.com
+      NEXT_PUBLIC_BUILDBASE_ORG_ID: ${{ vars.BUILDBASE_ORG_ID }}
+      NEXT_PUBLIC_BUILDBASE_ENVIRONMENT: ${{ vars.BUILDBASE_ENVIRONMENT }}
+      NEXT_PUBLIC_BUILDBASE_CLIENT_ID: ${{ vars.BUILDBASE_CLIENT_ID }}
       # Optional: a Cloudflare Access service token, so the smoke test can
       # see past the team sign-in (docs/DEPLOY.md).
       CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
@@ -95,6 +101,14 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
       NEXT_PUBLIC_APP_URL: https://app.levuche.com
+      # Buildbase production: no environment key, and its own sign-in client
+      # (BUILDBASE_PRODUCTION_CLIENT_ID), so a dev client can never reach
+      # production. Until that variable is set, the app says sign-in isn't
+      # open.
+      NEXT_PUBLIC_BUILDBASE_REDIRECT_URL: https://app.levuche.com
+      NEXT_PUBLIC_BUILDBASE_ORG_ID: ${{ vars.BUILDBASE_ORG_ID }}
+      NEXT_PUBLIC_BUILDBASE_ENVIRONMENT: ''
+      NEXT_PUBLIC_BUILDBASE_CLIENT_ID: ${{ vars.BUILDBASE_PRODUCTION_CLIENT_ID }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
