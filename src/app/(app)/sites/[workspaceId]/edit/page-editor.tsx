@@ -4,21 +4,69 @@ import { PreviewMode } from '@levuche/ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CreatorPage } from '@/components/creator-page';
 import { pageBlocks } from '@/components/page-blocks';
-import { SettingsFields } from '@/components/settings-fields';
+import {
+  PictureUploads,
+  SettingsFields,
+  type UploadPicture,
+} from '@/components/settings-fields';
 import { blockPanel, EDITOR_BLOCKS } from '@/lib/blocks';
 import { buttonClasses } from '@/lib/button';
 import type { Block } from '@/lib/db';
 import type { PageFrame } from '@/lib/page-layout';
+import { pictureSide } from '@/lib/pictures';
+import { NotAPicture, shrinkPicture } from '@/lib/shrink-picture';
 import {
   addBlock,
   type EditResult,
   moveBlock,
   removeBlock,
   saveBlock,
+  startPictureUpload,
 } from './actions';
 
 /** How long typing has to stop before a block is saved. */
 const SAVE_AFTER_MS = 700;
+
+const NOT_A_PICTURE =
+  'This picture couldn’t be opened. Use a JPEG, PNG or WebP picture.';
+const UPLOAD_FAILED =
+  'The picture didn’t upload. Check your connection and try again.';
+
+/**
+ * Uploads a picture for a field (#24): shrunk in the browser to the size
+ * the field shows it, then sent to an address the server gives for it.
+ */
+function pictureUploader(workspaceId: string): UploadPicture {
+  return async (file, field) => {
+    let picture: Blob;
+    try {
+      picture = await shrinkPicture(file, pictureSide(field));
+    } catch (error) {
+      if (error instanceof NotAPicture) return { error: NOT_A_PICTURE };
+      throw error;
+    }
+    const started = await startPictureUpload(workspaceId, {
+      type: picture.type,
+      bytes: picture.size,
+    });
+    if ('error' in started) return { error: started.error };
+    try {
+      const response = await fetch(started.ok.address, {
+        method: 'PUT',
+        body: picture,
+        headers: { 'Content-Type': picture.type },
+      });
+      const answer = (await response.json()) as {
+        url?: string;
+        error?: string;
+      };
+      if (answer.url) return { url: answer.url };
+      return { error: answer.error ?? UPLOAD_FAILED };
+    } catch {
+      return { error: UPLOAD_FAILED };
+    }
+  };
+}
 
 /** The preview's width on each screen; the grid lays itself out to fit. */
 const SCREENS = {
@@ -53,6 +101,7 @@ export function PageEditor({
   initialSelected?: string;
   readOnly: boolean;
 }) {
+  const [uploadPicture] = useState(() => pictureUploader(workspaceId));
   const [blocks, setBlocks] = useState(initialBlocks);
   const [selected, setSelected] = useState<string | null>(
     initialBlocks.find((b) => b.id === initialSelected)?.id ??
@@ -304,12 +353,14 @@ export function PageEditor({
             <h2 id="editor-settings" className="text-h3 m-0">
               {panel.label}
             </h2>
-            <SettingsFields
-              fields={panel.settings}
-              values={current.props}
-              disabled={readOnly}
-              onChange={(props) => change(current, props)}
-            />
+            <PictureUploads.Provider value={uploadPicture}>
+              <SettingsFields
+                fields={panel.settings}
+                values={current.props}
+                disabled={readOnly}
+                onChange={(props) => change(current, props)}
+              />
+            </PictureUploads.Provider>
             <details className="flex flex-col gap-4">
               <summary className="cursor-pointer font-semibold">Look</summary>
               <div className="pt-4">

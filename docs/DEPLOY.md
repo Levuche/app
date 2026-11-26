@@ -38,6 +38,17 @@ own Git builds (Workers Builds), or every push would deploy twice.
    `production` (deploys only from `main`; add yourself as a required
    reviewer if production should wait for your click).
 
+4. **R2 for pictures** (#24). Turn on R2 in the account (Cloudflare
+   dashboard > R2), then make the two buckets the Workers use:
+
+   ```sh
+   npx wrangler r2 bucket create levuche-files-dev
+   npx wrangler r2 bucket create levuche-files
+   ```
+
+   A deploy fails until its bucket exists. The API token also needs
+   Workers R2 Storage: Edit if the deploy should make buckets itself.
+
 The first deploy of each branch creates its Worker and its custom domain on
 the `levuche.com` zone. A new domain's certificate can take a few minutes.
 

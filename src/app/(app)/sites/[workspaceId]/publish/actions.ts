@@ -5,9 +5,16 @@ import { redirect } from 'next/navigation';
 import { BILLING_MANAGE } from '@/lib/billing';
 import { bb, requireUser } from '@/lib/buildbase';
 import { siteStore } from '@/lib/db';
+import { sweepFiles } from '@/lib/files';
 import { publishProblems } from '@/lib/publish';
 import { appUrl } from '@/lib/site';
-import { database, getSite, SITE_EDIT, siteAddOn } from '@/lib/sites';
+import {
+  database,
+  fileBucket,
+  getSite,
+  SITE_EDIT,
+  siteAddOn,
+} from '@/lib/sites';
 
 /*
  * Publishing (#21): each action checks with Buildbase, on every call, that
@@ -52,6 +59,8 @@ export async function publishSite(form: FormData) {
       .trim()
       .slice(0, 200) || null;
   const number = await store.publish(site.id, user.id, note);
+  // Pictures the new version and the draft no longer use can go (#24).
+  if (number) await sweepFiles(await database(), await fileBucket(), site.id);
   done(workspaceId, number ? `published-${number}` : 'not-published');
 }
 

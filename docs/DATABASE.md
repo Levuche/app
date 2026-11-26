@@ -32,8 +32,8 @@ migration reaches it only once the pull request is merged.
 
 From `migrations/0001_sites_pages_versions.sql`, `0002_block_order.sql`
 for the order of blocks, `0003_preview_link.sql` for a site's private
-preview link (`sites.preview_token`), and `0004_reports_and_pauses.sql`
-for reports and the team's pauses:
+preview link (`sites.preview_token`), `0004_reports_and_pauses.sql`
+for reports and the team's pauses, and `0005_files.sql` for pictures:
 
 | Table            | One row per                                                                          |
 | ---------------- | ------------------------------------------------------------------------------------ |
@@ -45,6 +45,8 @@ for reports and the team's pauses:
 | `versions`       | publish: the whole site as published, with a note, who published it and when         |
 | `reports`        | visitor's report: reason, details and a copy of the live version at that moment      |
 | `moderation_log` | pause, unpause, closed reports or creator's appeal: who, when and why                |
+| `files`          | uploaded picture: its site, type, size in bytes and pixels; the bytes are in R2      |
+| `uploads`        | upload address not yet used: the hash of its token, the site, type and size promised |
 
 A site's status is one of `unpublished`, `live`, `offline` (taken down by
 the creator), `paused` (by the Levuche team) or `deleted`. Any change to a

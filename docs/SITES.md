@@ -210,7 +210,8 @@ viewers see the same screen with nothing to change.
   changes saved." or what went wrong. Only the fields the panel has are
   kept (`savedProps`), up to 20,000 characters a block and 60 blocks a page.
 - **What shows:** `readyProps` checks every value as the page is drawn: a
-  link must be safe, a picture an https address (uploads come with #24),
+  link must be safe, a picture an https address or one uploaded here (see
+  Pictures),
   and list items still being filled in are left out. A block whose needed
   fields are empty is left off the page; the editor shows "Add … to show
   this block." in its place. `pageBlocks` in `src/components/page-blocks.tsx`
@@ -220,6 +221,38 @@ viewers see the same screen with nothing to change.
   each screen; moving blocks by hand on the grid comes later.
 
 Nothing reaches visitors until the site is published (see Publishing).
+
+## Pictures
+
+A picture field has an "Upload" button beside its address (#24). The
+picture goes in two steps, so the bytes never pass through a server
+action:
+
+1. **In the browser** (`src/lib/shrink-picture.ts`), it is turned the right
+   way up, shrunk to the size the field shows it (640 pixels on its longest
+   side for a profile picture, 2,000 for others) and drawn afresh as WebP,
+   which leaves camera and location data behind.
+2. **The editor asks for an upload address** (`startPictureUpload`), which
+   checks the type (JPEG, PNG or WebP), the size (5 MB at most) and the
+   site's room (100 MB), and answers `/api/uploads/<token>`. The address
+   works once, for 10 minutes; only its hash is kept.
+3. **The browser sends the picture there** (`src/app/api/uploads/[token]`).
+   The server reads the type and size from the bytes themselves
+   (`src/lib/pictures.ts`), refuses anything over 4,096 pixels a side,
+   takes out Exif, XMP, IPTC and text data again, and keeps the picture in
+   R2 under `files/<id>`, with a row in `files`.
+
+Pictures are shown at `<app address>/files/<id>`, kept by browsers for a
+year (the address never changes), sent with `Content-Security-Policy:
+sandbox` and `Content-Disposition: inline`, so a file can never run as a
+page. Creator sites show them from there too; on dev that address is behind
+Cloudflare Access, which is fine for the team.
+
+Pictures nothing uses are removed after each upload and each publish
+(`sweepFiles` in `src/lib/files.ts`): one stays while the draft on any
+page, any published version or the theme names it, and for its first hour
+in any case, so a picture being chosen isn't lost. Storage counts kept
+pictures and uploads still on their way.
 
 ## The switcher and settings
 
