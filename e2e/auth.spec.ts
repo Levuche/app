@@ -86,7 +86,8 @@ test('signing out ends the session on levuche.com too', async ({
   await page.getByRole('button', { name: 'Sam Rivera' }).click();
   const signedOut = page.waitForResponse('**/api/auth/signout');
   await page.getByRole('button', { name: 'Sign out' }).click();
-  const cleared = (await signedOut).headers()['set-cookie'] ?? '';
+  // allHeaders: headers() leaves out Set-Cookie.
+  const cleared = (await (await signedOut).allHeaders())['set-cookie'] ?? '';
   expect(cleared).toContain(`${COOKIE}=;`);
   expect(cleared).toMatch(/Max-Age=0/i);
   await expect(
