@@ -61,6 +61,9 @@ export function BuildbaseProvider({ children }: { children: React.ReactNode }) {
       orgId={buildbase.orgId}
       environment={buildbase.environment}
       ui={ui}
+      // The app shows its own state (the button reads "Signing in…"), so
+      // Buildbase's full-screen "Redirecting..." cover stays off.
+      fullScreenLoader={false}
       auth={{
         clientId: buildbase.clientId,
         redirectUrl: buildbase.redirectUrl,
