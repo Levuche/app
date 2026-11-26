@@ -101,8 +101,44 @@ overview. Admins and editors publish; viewers see the versions.
   It's sent with `noindex`, `no-store` and `no-referrer`. Turning it off
   stops the link working, and turning it on again makes a new one. It
   doesn't work for a paused site.
-- The live site's cache is cleared on publish and rollback once
-  levuche.page serves sites (#23).
+- A publish or a rollback shows on the live site at once: the live site's
+  cache is kept by version ([Serving sites](#serving-sites)).
+
+## Serving sites
+
+Live sites are served by their own Worker, `levuche-sites` (`sites/`), not
+by the app. It reads the app's database and never writes to it.
+
+- **Addresses.** `<handle>.levuche.page` in production. The dev Worker
+  answers on one address, `sites-dev.levuche.com/<handle>`, and is never
+  indexed. `levuche.page` itself and `www` redirect to levuche.com.
+- **The page.** The live version's snapshot, drawn with the same blocks and
+  frame as the editor's preview, as static HTML with the stylesheet inlined
+  (`sites/src/site.css`, built by `npm run sites:css`). No scripts run, so
+  "Back to top" isn't on live sites.
+- **States.** A handle nobody has says it's free and links to make a site.
+  A site never published says it isn't live yet; one taken offline or
+  paused says it isn't available; a deleted one answers 410. None of these
+  are cached or indexed. A path the site doesn't have says so and links
+  home.
+- **Speed.** Each version is drawn once per data centre and kept in the
+  Cache API under its version number, so a publish or a rollback never
+  needs a purge. Browsers keep it with an ETag of the version.
+  `npm run sites:speed -- <address>` times the first and later requests.
+- **Search.** `robots.txt` and `sitemap.xml` for live sites; pages kept to
+  their link are left out of the sitemap and sent with `noindex`.
+- **Safety.** A strict Content Security Policy (no scripts, no forms,
+  pictures and videos from https only), HSTS and no cookies. The app's
+  session cookie is for levuche.com, so it never reaches levuche.page.
+- **Social apps.** In Instagram's, TikTok's and Facebook's own browsers a
+  slim bar offers to open the page in the phone's browser.
+- **Paying.** The Worker can't ask Buildbase about a site's plan, so it goes
+  by the live status, which only a paid publish sets (#19). A refund or a
+  dispute doesn't take a site down yet; that needs Buildbase's billing
+  events.
+
+Run it locally with `npm run sites:dev` after `npm run sites:css`; its
+tests are in `sites/src/serve.test.ts` (`npm test`).
 
 ## Roles and checks
 

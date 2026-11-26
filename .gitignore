@@ -24,3 +24,4 @@ npm-debug.log*
 # Playwright
 /test-results/
 /playwright-report/
+/sites/generated/

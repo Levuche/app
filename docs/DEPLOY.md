@@ -50,6 +50,19 @@ service token as the repository secrets `CF_ACCESS_CLIENT_ID` and
 `CF_ACCESS_CLIENT_SECRET`; without them the checks only confirm that Access
 asks for sign-in.
 
+## Creator sites on levuche.page
+
+The sites Worker (`sites/`, [SITES.md](SITES.md)) deploys with the app:
+`levuche-sites-dev` on `sites-dev.levuche.com` from `dev`, and
+`levuche-sites` on the route `*.levuche.page/*` from `main`. Before live
+sites answer in production:
+
+1. The `levuche.page` zone is in the Levuche Cloudflare account. Add a
+   proxied wildcard record, `*` AAAA `100::`, so every handle reaches the
+   Worker. Universal SSL covers `*.levuche.page`.
+2. The API token also needs, on the `levuche.page` zone, Workers Routes:
+   Edit and Zone: Read.
+
 ## Security headers
 
 `next.config.ts` sends a Content-Security-Policy with every response,

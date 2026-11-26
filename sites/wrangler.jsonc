@@ -1,0 +1,50 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  // The sites Worker (#23): every published creator site, apart from the
+  // app (docs/SITES.md, "Serving sites"). It reads the app's database and
+  // never writes to it. Deployed by .github/workflows/deploy.yml; no
+  // secrets belong in this file.
+  "name": "levuche-sites",
+  "main": "src/worker.ts",
+  // sites/tsconfig.json, the app's settings, for every file it bundles.
+  "tsconfig": "tsconfig.json",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  // The stylesheet sites/build-css.mjs builds is inlined as text.
+  "rules": [{ "type": "Text", "globs": ["**/*.css"], "fallthrough": false }],
+  "observability": { "enabled": true },
+  // Production: <handle>.levuche.page. The levuche.page zone, its wildcard
+  // DNS record and certificate are set up by the owner first (docs/DEPLOY.md).
+  "routes": [{ "pattern": "*.levuche.page/*", "zone_name": "levuche.page" }],
+  "workers_dev": false,
+  "vars": { "SITES_DOMAIN": "levuche.page" },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "levuche-app",
+      "database_id": "1b7f401f-6ef9-4dda-83e7-a7f45f7aaa75",
+    },
+  ],
+  "env": {
+    // The dev Worker: one levuche.com address, with the handle as the first
+    // part of the path (sites-dev.levuche.com/<handle>), reading the dev
+    // app's database. Never indexed.
+    "dev": {
+      "name": "levuche-sites-dev",
+      "routes": [{ "pattern": "sites-dev.levuche.com", "custom_domain": true }],
+      "workers_dev": false,
+      "vars": {
+        "SITES_DOMAIN": "levuche.page",
+        "SITES_PATH_HOST": "sites-dev.levuche.com",
+        "SITES_NOINDEX": "true",
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "levuche-app-dev",
+          "database_id": "4ee5a7b5-da54-41f2-920f-fff0a7f0bbea",
+        },
+      ],
+    },
+  },
+}

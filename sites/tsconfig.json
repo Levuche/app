@@ -1,0 +1,5 @@
+{
+  // For bundling the sites Worker: the app's settings (the automatic JSX
+  // runtime and the @/ paths), applied to every file, @levuche/ui's too.
+  "extends": "../tsconfig.json"
+}

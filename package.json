@@ -21,7 +21,13 @@
     "cf:deploy:dev": "opennextjs-cloudflare build && opennextjs-cloudflare deploy --env dev",
     "e2e:build": "set -a && . ./e2e/e2e.env && set +a && next build",
     "e2e": "playwright test",
-    "test": "node --test \"src/**/*.test.ts\""
+    "test": "node --test \"src/**/*.test.ts\" \"sites/**/*.test.ts\"",
+    "sites:css": "node sites/build-css.mjs",
+    "sites:dev": "npm run sites:css && cd sites && wrangler dev --env dev",
+    "sites:build": "npm run sites:css && cd sites && wrangler deploy --dry-run --outdir .wrangler/dry-run",
+    "sites:deploy": "npm run sites:css && cd sites && wrangler deploy",
+    "sites:deploy:dev": "npm run sites:css && cd sites && wrangler deploy --env dev",
+    "sites:speed": "node sites/speed.mjs"
   },
   "dependencies": {
     "@buildbase/sdk": "^1.9.0",
