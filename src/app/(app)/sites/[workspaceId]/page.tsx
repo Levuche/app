@@ -3,7 +3,9 @@ import Link from 'next/link';
 import { CopyAddress } from '@/components/copy-address';
 import { OpenSiteSettings } from '@/components/site-switcher';
 import { siteAddress } from '@/lib/handle';
+import { buttonClasses } from '@/lib/button';
 import { SITE_STATUS } from '@/lib/site-status';
+import { setSiteOffline } from './actions';
 import { getSite, SITE_EDIT } from '@/lib/sites';
 
 type Props = { params: Promise<{ workspaceId: string }> };
@@ -19,8 +21,8 @@ const ROLES: Record<string, string> = {
 };
 
 /**
- * A site's overview: its status, its address with a way to copy it, and who
- * you are on it. Edit and Publish join it with the editor (#20) and
+ * A site's overview: its status, its address with a way to copy it, taking
+ * it offline and back (admins), and who you are on it. Edit and Publish join it with the editor (#20) and
  * publishing (#21); stats come later (#27).
  */
 export default async function SitePage({ params }: Props) {
@@ -73,6 +75,32 @@ export default async function SitePage({ params }: Props) {
           </p>
           <CopyAddress address={address} />
         </div>
+        {role === 'admin' &&
+          (site.status === 'live' || site.status === 'offline') && (
+            <form action={setSiteOffline} className="flex flex-col gap-2">
+              <input
+                type="hidden"
+                name="workspaceId"
+                value={site.workspaceId}
+              />
+              <input
+                type="hidden"
+                name="offline"
+                value={String(site.status === 'live')}
+              />
+              <button
+                type="submit"
+                className={buttonClasses('outline', 'self-start')}
+              >
+                {site.status === 'live' ? 'Take offline' : 'Put back online'}
+              </button>
+              <p className="text-lv-text-2 m-0 text-sm">
+                {site.status === 'live'
+                  ? 'Visitors see that your page isn’t available until you put it back. Nothing is deleted.'
+                  : 'Your last published version goes live again at the same link.'}
+              </p>
+            </form>
+          )}
       </section>
 
       <p className="m-0">
