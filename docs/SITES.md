@@ -10,11 +10,11 @@ to a workspace work on that site with the role they were given.
 
 ## Addresses
 
-| Address                 | Page                                                                       |
-| ----------------------- | -------------------------------------------------------------------------- |
-| `/`                     | No sites: on to `/new`. One site: on to it. More: the list of sites.       |
-| `/new`                  | Make a site: its name and its handle on levuche.page.                      |
-| `/sites/<workspace id>` | The site. "Page not found" for anyone who isn't a member of its workspace. |
+| Address                 | Page                                                                          |
+| ----------------------- | ----------------------------------------------------------------------------- |
+| `/`                     | No sites: on to `/new`. One site: on to it. More: the list of sites.          |
+| `/new`                  | Make a site: its name and its handle on levuche.page.                         |
+| `/sites/<workspace id>` | The site's overview: status, link and Copy. "Page not found" for non-members. |
 
 ## Making a site
 
@@ -53,6 +53,15 @@ come later (#3).
 
 Buildbase's switcher hides its own "Create workspace" button, so every site
 is made through `/new` with a handle.
+
+## Taking a site offline
+
+A site's admins can take a live site offline from its overview, and put it
+back: `setSiteOffline` (`src/app/(app)/sites/[workspaceId]/actions.ts`)
+checks the role with Buildbase on every call, and `siteStore.setOffline()`
+only moves a site between `live` and `offline`, keeping its live version.
+A site the Levuche team paused, or one never published, doesn't move.
+Visitors see an "offline" page meanwhile (#23). Deleting a site comes later.
 
 ## Roles and checks
 

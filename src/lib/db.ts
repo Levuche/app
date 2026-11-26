@@ -255,6 +255,29 @@ export function siteStore(
       );
     },
 
+    /**
+     * Takes a live site offline, or puts an offline one back live with the
+     * version it had. Paused (by the Levuche team), unpublished and deleted
+     * sites don't change. True when the site changed.
+     */
+    async setOffline(siteId: string, offline: boolean) {
+      const { meta } = await db
+        .prepare(
+          `UPDATE sites SET status = ?3,
+           updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+           WHERE id = ?2 AND workspace_id = ?1 AND status = ?4
+           AND live_version IS NOT NULL`
+        )
+        .bind(
+          workspaceId,
+          siteId,
+          offline ? 'offline' : 'live',
+          offline ? 'live' : 'offline'
+        )
+        .run();
+      return meta.changes > 0;
+    },
+
     /** Changes a page's draft. False when it isn't this workspace's page. */
     async updatePage(
       pageId: string,
