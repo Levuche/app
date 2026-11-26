@@ -3,8 +3,9 @@
 import { redirect } from 'next/navigation';
 import { bb, requireUser } from '@/lib/buildbase';
 import { siteStore } from '@/lib/db';
-import { isHandle, siteAddress } from '@/lib/handle';
+import { handleProblem, siteAddress } from '@/lib/handle';
 import { database } from '@/lib/sites';
+import { starterBlocks } from '@/lib/starter';
 
 export interface NewSiteState {
   name: string;
@@ -14,7 +15,7 @@ export interface NewSiteState {
 
 /**
  * Makes a site: a Buildbase workspace named after it, then its row, handle
- * and home page in the database. If the handle is taken, the workspace is
+ * and home page, with the starting layout, in the database. If the handle is taken, the workspace is
  * deleted again, so a workspace never stands without its site.
  */
 export async function createSite(
@@ -29,12 +30,8 @@ export async function createSite(
   const typed = { name, handle };
   if (!name || name.length > 60)
     return { ...typed, error: 'Give your site a name of up to 60 characters.' };
-  if (!isHandle(handle))
-    return {
-      ...typed,
-      error:
-        'Use 3 to 30 lowercase letters and numbers for the address, with single hyphens between them.',
-    };
+  const problem = handleProblem(handle);
+  if (problem) return { ...typed, error: problem };
 
   let workspaceId: string;
   try {
@@ -58,7 +55,7 @@ export async function createSite(
   }
 
   const site = await siteStore(await database(), { workspaceId })
-    .create(handle)
+    .create(handle, starterBlocks(name))
     .catch(async (error: unknown) => {
       await bb.workspace.delete(workspaceId);
       throw error;

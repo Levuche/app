@@ -55,6 +55,50 @@ test('a new creator makes a site and lands on it', async ({ page }) => {
   await expect(page).toHaveURL(new RegExp(`/sites/${id}$`));
 });
 
+test('the address is checked as it is typed', async ({ page }) => {
+  const handle = newHandle();
+  await signInAs(page, newCreator());
+  await makeSite(page, 'First', handle);
+
+  await signInAs(page, newCreator());
+  await page.goto('/new');
+  const address = page.getByLabel('Address');
+  const check = page.getByRole('status').filter({ hasText: /levuche/i });
+
+  await address.fill(newHandle());
+  await expect(check).toHaveText(/\.levuche\.page is free\./);
+
+  await address.fill('admin');
+  await expect(check).toHaveText('admin is kept for Levuche.');
+
+  await address.fill(handle);
+  await expect(check).toHaveText(`${handle}.levuche.page is taken.`);
+  await expectNoA11yViolations(page);
+
+  // Picking a suggested name puts it in the box, and it's free.
+  await page
+    .getByRole('button', { name: `Use ${handle}-page.levuche.page` })
+    .click();
+  await expect(address).toHaveValue(`${handle}-page`);
+  await expect(check).toHaveText(`${handle}-page.levuche.page is free.`);
+});
+
+test('a kept-back address is refused when sent', async ({ page }) => {
+  await signInAs(page, newCreator());
+  await page.goto('/new');
+  await page.getByLabel('Site name').fill('Help desk');
+  await page.getByLabel('Address').fill('help');
+  await page.getByRole('button', { name: 'Make the site' }).click();
+  await expect(
+    page.getByRole('alert').filter({ hasText: 'help is kept' })
+  ).toHaveText('help is kept for Levuche.');
+});
+
+test('signed out, the address check answers nothing', async ({ request }) => {
+  const response = await request.get('/api/handles?handle=sam');
+  expect(response.status()).toBe(401);
+});
+
 test('a taken address is refused and leaves nothing behind', async ({
   page,
 }) => {

@@ -30,14 +30,15 @@ migration reaches it only once the pull request is merged.
 
 ## Tables
 
-From `migrations/0001_sites_pages_versions.sql`:
+From `migrations/0001_sites_pages_versions.sql`, and `0002_block_order.sql`
+for the order of blocks:
 
 | Table      | One row per                                                                          |
 | ---------- | ------------------------------------------------------------------------------------ |
 | `sites`    | creator site (one per Buildbase workspace), with its status and live version         |
 | `handles`  | name on levuche.page: a site's current one, an old one held for a while, or reserved |
 | `pages`    | page of a site's draft: address, title, order, home, hidden, removed at next publish |
-| `blocks`   | block on a page: its @levuche/ui type and settings                                   |
+| `blocks`   | block on a page: its @levuche/ui type, settings and reading order                    |
 | `layouts`  | page and screen (phone, tablet, desktop): where each block sits on the grid          |
 | `versions` | publish: the whole site as published, with a note, who published it and when         |
 
@@ -56,7 +57,9 @@ Every query goes through `siteStore(db, { workspaceId })` in
 `src/lib/db.ts`, with the workspace the signed-in creator is working in.
 It only ever sees that workspace's rows: another workspace's site reads as
 not found and can't be changed. Don't query the tables by id alone
-anywhere else.
+anywhere else. The one exception is `takenHandles(db, handles)`, which
+answers only which of some public addresses are in use, for the new-site
+form's live check.
 
 `npm test` runs `src/lib/db.test.ts` against a local D1 with every
 migration applied, and checks that one workspace can't read or change
