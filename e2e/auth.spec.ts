@@ -19,28 +19,29 @@ test('a signed-out visitor sees only the sign-in screen', async ({ page }) => {
     page.getByRole('heading', { name: 'Sign in to Levuche' })
   ).toBeVisible();
   await expect(page.getByRole('button', { name: 'Sign in' })).toBeEnabled();
-  await expect(page.getByText('Your dashboard is on its way')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Make a site' })).toHaveCount(
+    0
+  );
   await expectNoA11yViolations(page);
 });
 
-test('signing in comes back to the dashboard', async ({ page, context }) => {
+// The test creator has no sites, so the app sends them on to make one
+// (e2e/sites.spec.ts covers sites).
+test('signing in comes back to the app', async ({ page, context }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(
-    page.getByRole('heading', { name: 'Welcome, Sam' })
+    page.getByRole('heading', { name: 'Make a site' })
   ).toBeVisible();
   const cookie = (await context.cookies()).find((c) => c.name === COOKIE);
   expect(cookie).toMatchObject({ value: SESSION, httpOnly: true });
 });
 
-test('a session shows the dashboard and account menu', async ({
-  page,
-  context,
-}) => {
+test('a session shows the app and account menu', async ({ page, context }) => {
   await context.addCookies([signedIn]);
   await page.goto('/');
   await expect(
-    page.getByRole('heading', { name: 'Welcome, Sam' })
+    page.getByRole('heading', { name: 'Make a site' })
   ).toBeVisible();
 
   await page.getByRole('button', { name: 'Sam Rivera' }).click();

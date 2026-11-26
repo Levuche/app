@@ -6,7 +6,8 @@ import { defineConfig, devices } from '@playwright/test';
  * - Against a local production build: `npm run e2e:build`, then `npm run e2e`.
  *   Playwright starts `next start` on port 3100 itself, with sign-in pointed
  *   at a stand-in Buildbase server on port 3101 (e2e/mock-buildbase.mjs and
- *   e2e/e2e.env), so signed-in pages are tested without real accounts.
+ *   e2e/e2e.env) and the local D1 database migrated first, so signed-in
+ *   pages and sites are tested without real accounts.
  * - Against a deployed site, such as a pull request's preview link:
  *   `E2E_BASE_URL=https://pr-12-levuche-app-dev.levuche-com.workers.dev npm run e2e`.
  *   Nothing is started locally then, and the tests that need the stand-in
@@ -41,7 +42,7 @@ export default defineConfig({
           reuseExistingServer: !process.env.CI,
         },
         {
-          command: `set -a && . ./e2e/e2e.env && set +a && npx next start -p ${port}`,
+          command: `CI=1 npx wrangler d1 migrations apply DB --local && set -a && . ./e2e/e2e.env && set +a && npx next start -p ${port}`,
           url: `http://localhost:${port}/api/health`,
           reuseExistingServer: !process.env.CI,
           timeout: 120_000,
