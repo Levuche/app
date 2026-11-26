@@ -78,8 +78,38 @@ Every page and server function goes through `src/lib/sites.ts`:
   be probed.
 
 A server function that changes a site must check
-`can(SITE_EDIT)` itself before it writes, whatever the page showed; the
-first ones come with the editor.
+`can(SITE_EDIT)` itself before it writes, whatever the page showed, as the
+editor's do (`src/app/(app)/sites/[workspaceId]/edit/actions.ts`).
+
+## The page editor
+
+`/sites/<workspace id>/edit` edits the site's home page (#20). On the left,
+the page's blocks in reading order (Up, Down, Remove, and "Add a block"),
+and the selected block's settings; on the right, the page as visitors will
+see it, on a phone, a tablet or a computer. Admins and editors change it;
+viewers see the same screen with nothing to change.
+
+- **Which blocks:** `EDITOR_BLOCKS` in `src/lib/blocks.ts`, the core blocks
+  from @levuche/ui (profile, social icons, links, text and a picture).
+- **The settings panel** is drawn from each block's settings in the
+  @levuche/ui registry (`blockPanel`, drawn by
+  `src/components/settings-fields.tsx`), plus a few of the shared look
+  fields under "Look". A new prop in ui shows up in the panel by itself.
+- **Saving:** each change saves the block's settings as the draft once
+  typing stops (`saveBlock`), and the status line says "Saving…", "All
+  changes saved." or what went wrong. Only the fields the panel has are
+  kept (`savedProps`), up to 20,000 characters a block and 60 blocks a page.
+- **What shows:** `readyProps` checks every value as the page is drawn: a
+  link must be safe, a picture an https address (uploads come with #24),
+  and list items still being filled in are left out. A block whose needed
+  fields are empty is left off the page; the editor shows "Add … to show
+  this block." in its place. `pageBlocks` in `src/components/page-blocks.tsx`
+  turns saved blocks into the grid's blocks for the editor and, later, the
+  live page.
+- **Layout** follows the page's frame and the grid's own arrangement on
+  each screen; moving blocks by hand on the grid comes later.
+
+Nothing reaches visitors until the site is published (#21).
 
 ## The switcher and settings
 
@@ -101,3 +131,5 @@ handle.
 (`e2e/mock-buildbase.mjs`, where any session starting `e2e-` is a creator of
 its own) and a local D1 database: a first site, a taken handle, a site
 outside the creator's workspaces, a viewer, and the switcher.
+`e2e/editor.spec.ts` fills in a link and sees it saved, adds, moves and
+removes blocks, and checks a viewer can't change anything.

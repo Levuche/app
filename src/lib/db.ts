@@ -55,6 +55,9 @@ const SITES = `SELECT s.id, h.handle, s.status, s.live_version AS liveVersion,
 
 const OWN_SITE = 'site_id IN (SELECT id FROM sites WHERE workspace_id = ?1)';
 
+/** The most blocks one page can hold. */
+export const MAX_BLOCKS = 60;
+
 export function siteStore(
   db: D1Database,
   { workspaceId }: { workspaceId: string }
@@ -153,6 +156,104 @@ export function siteStore(
           .bind(workspaceId, pageId)
           .all<Omit<Block, 'props'> & { props: string }>()
       ).results.map((row) => ({ ...row, props: JSON.parse(row.props) })),
+
+    /** The page a block is on, when the block is this workspace's. */
+    async blockPage(blockId: string) {
+      const row = await db
+        .prepare(
+          `SELECT b.page_id AS pageId FROM blocks b
+           JOIN pages p ON p.id = b.page_id
+           WHERE b.id = ?2 AND p.${OWN_SITE}`
+        )
+        .bind(workspaceId, blockId)
+        .first<{ pageId: string }>();
+      return row?.pageId ?? null;
+    },
+
+    /**
+     * Adds a block at the end of a page. Null when the page isn't this
+     * workspace's or already holds MAX_BLOCKS.
+     */
+    async addBlock(
+      pageId: string,
+      type: string,
+      props: Record<string, unknown>
+    ): Promise<Block | null> {
+      const id = crypto.randomUUID();
+      const { meta } = await db
+        .prepare(
+          `INSERT INTO blocks (id, page_id, type, props, position)
+           SELECT ?3, p.id, ?4, ?5, coalesce(
+             (SELECT max(position) + 1 FROM blocks WHERE page_id = p.id), 0)
+           FROM pages p WHERE p.id = ?2 AND p.${OWN_SITE}
+           AND (SELECT count(*) FROM blocks WHERE page_id = p.id) < ?6`
+        )
+        .bind(workspaceId, pageId, id, type, JSON.stringify(props), MAX_BLOCKS)
+        .run();
+      if (meta.changes === 0) return null;
+      return (await this.blocks(pageId)).find((b) => b.id === id) ?? null;
+    },
+
+    /** Replaces a block's settings. False when it isn't this workspace's. */
+    async updateBlock(blockId: string, props: Record<string, unknown>) {
+      const { meta } = await db
+        .prepare(
+          `UPDATE blocks SET props = ?3,
+           updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+           WHERE id = ?2 AND page_id IN
+             (SELECT id FROM pages WHERE ${OWN_SITE})`
+        )
+        .bind(workspaceId, blockId, JSON.stringify(props))
+        .run();
+      return meta.changes > 0;
+    },
+
+    /** Takes a block off its page. False when it isn't this workspace's. */
+    async removeBlock(blockId: string) {
+      const pageId = await this.blockPage(blockId);
+      if (!pageId) return false;
+      await db
+        .prepare('DELETE FROM blocks WHERE id = ?1 AND page_id = ?2')
+        .bind(blockId, pageId)
+        .run();
+      await this.orderBlocks(
+        pageId,
+        (await this.blocks(pageId)).map((b) => b.id)
+      );
+      return true;
+    },
+
+    /**
+     * Moves a block to `to` in its page's reading order (from 0; clamped to
+     * the page). False when it isn't this workspace's.
+     */
+    async moveBlock(blockId: string, to: number) {
+      const pageId = await this.blockPage(blockId);
+      if (!pageId) return false;
+      const ids = (await this.blocks(pageId))
+        .map((b) => b.id)
+        .filter((id) => id !== blockId);
+      const at = Math.max(0, Math.min(ids.length, Math.trunc(to)));
+      ids.splice(at, 0, blockId);
+      await this.orderBlocks(pageId, ids);
+      return true;
+    },
+
+    /** Numbers a page's blocks 0, 1, 2… in the order of `ids`. */
+    async orderBlocks(pageId: string, ids: string[]) {
+      if (ids.length === 0) return;
+      await db.batch(
+        ids.map((id, position) =>
+          db
+            .prepare(
+              `UPDATE blocks SET position = ?4 WHERE id = ?3 AND page_id = ?2
+               AND page_id IN (SELECT id FROM pages WHERE ${OWN_SITE})
+               AND position != ?4`
+            )
+            .bind(workspaceId, pageId, id, position)
+        )
+      );
+    },
 
     /** Changes a page's draft. False when it isn't this workspace's page. */
     async updatePage(

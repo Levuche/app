@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import { after, before, test } from 'node:test';
 import type { D1Database } from '@cloudflare/workers-types';
 import { getPlatformProxy } from 'wrangler';
-import { siteStore, takenHandles } from './db.ts';
+import { MAX_BLOCKS, siteStore, takenHandles } from './db.ts';
 import { starterBlocks } from './starter.ts';
 
 const dir = mkdtempSync(join(tmpdir(), 'levuche-db-'));
@@ -168,4 +168,89 @@ test('taken, held and reserved handles all count as taken', async () => {
     ['in-use', 'kept', 'was-mine']
   );
   assert.deepEqual([...(await takenHandles(db, []))], []);
+});
+
+test('blocks are added, changed, moved and removed in order', async () => {
+  const store = siteStore(db, { workspaceId: 'ws-edit' });
+  const site = await store.create('editing', starterBlocks('Edit me'));
+  assert.ok(site);
+  const [home] = await store.pages(site.id);
+  const types = async () => (await store.blocks(home.id)).map((b) => b.type);
+
+  const text = await store.addBlock(home.id, 'text-block', { text: 'Hi' });
+  assert.ok(text);
+  assert.equal(text.position, 3);
+  assert.deepEqual(await types(), [
+    'creator-header',
+    'social-icons',
+    'link-list',
+    'text-block',
+  ]);
+
+  assert.equal(await store.updateBlock(text.id, { text: 'Hello' }), true);
+  assert.deepEqual(
+    (await store.blocks(home.id)).find((b) => b.id === text.id)?.props,
+    { text: 'Hello' }
+  );
+
+  assert.equal(await store.moveBlock(text.id, 1), true);
+  assert.deepEqual(await types(), [
+    'creator-header',
+    'text-block',
+    'social-icons',
+    'link-list',
+  ]);
+  // Past the end goes to the end.
+  assert.equal(await store.moveBlock(text.id, 99), true);
+  assert.deepEqual(
+    (await store.blocks(home.id)).map((b) => [b.type, b.position]),
+    [
+      ['creator-header', 0],
+      ['social-icons', 1],
+      ['link-list', 2],
+      ['text-block', 3],
+    ]
+  );
+
+  const [header] = await store.blocks(home.id);
+  assert.equal(await store.removeBlock(header.id), true);
+  assert.deepEqual(
+    (await store.blocks(home.id)).map((b) => [b.type, b.position]),
+    [
+      ['social-icons', 0],
+      ['link-list', 1],
+      ['text-block', 2],
+    ]
+  );
+});
+
+test("one workspace can't change another's blocks", async () => {
+  const mine = siteStore(db, { workspaceId: 'ws-blocks-mine' });
+  const theirs = siteStore(db, { workspaceId: 'ws-blocks-theirs' });
+  const site = await mine.create('mine-only', starterBlocks('Mine'));
+  assert.ok(site);
+  const [home] = await mine.pages(site.id);
+  const [header] = await mine.blocks(home.id);
+
+  assert.equal(await theirs.addBlock(home.id, 'text-block', {}), null);
+  assert.equal(await theirs.updateBlock(header.id, { name: 'Taken' }), false);
+  assert.equal(await theirs.moveBlock(header.id, 2), false);
+  assert.equal(await theirs.removeBlock(header.id), false);
+  assert.equal(await theirs.blockPage(header.id), null);
+
+  const blocks = await mine.blocks(home.id);
+  assert.equal(blocks.length, 3);
+  assert.deepEqual(blocks[0].props, { name: 'Mine' });
+});
+
+test('a page holds at most MAX_BLOCKS blocks', async () => {
+  const store = siteStore(db, { workspaceId: 'ws-full' });
+  const site = await store.create('full-page');
+  assert.ok(site);
+  const [home] = await store.pages(site.id);
+  for (let i = 0; i < MAX_BLOCKS; i++) {
+    assert.ok(await store.addBlock(home.id, 'text-block', { text: `${i}` }));
+  }
+  assert.equal(await store.addBlock(home.id, 'text-block', {}), null);
+  assert.equal((await store.blocks(home.id)).length, MAX_BLOCKS);
 });

@@ -29,11 +29,17 @@ export function CreatorPage({
   frame,
   theme,
   layouts,
+  preview = false,
 }: {
   blocks: SiteGridBlock[];
   frame: PageFrame;
   theme?: SiteTheme;
   layouts?: PageLayouts;
+  /**
+   * Drawn inside the editor: the page is a part of the editor's own page,
+   * so it isn't the <main> and has no "Back to top".
+   */
+  preview?: boolean;
 }) {
   return (
     <CreatorTheme
@@ -41,18 +47,29 @@ export function CreatorPage({
       className="min-h-dvh px-4 py-6 sm:px-6 sm:py-10"
     >
       {frame === 'column' ? (
-        <OneColumn blocks={blocks} />
+        <OneColumn blocks={blocks} preview={preview} />
       ) : (
-        <BesideGrid blocks={blocks} layouts={layouts} />
+        <BesideGrid blocks={blocks} layouts={layouts} preview={preview} />
       )}
-      <BackToTop targetId={PAGE_TOP_ID} />
+      {preview ? null : <BackToTop targetId={PAGE_TOP_ID} />}
     </CreatorTheme>
   );
 }
 
-function OneColumn({ blocks }: { blocks: SiteGridBlock[] }) {
+function OneColumn({
+  blocks,
+  preview,
+}: {
+  blocks: SiteGridBlock[];
+  preview: boolean;
+}) {
   return (
-    <SitePage as="main" id={PAGE_TOP_ID} tabIndex={-1} data-frame="column">
+    <SitePage
+      {...(preview
+        ? { as: 'div' as const }
+        : { as: 'main' as const, id: PAGE_TOP_ID, tabIndex: -1 })}
+      data-frame="column"
+    >
       {blocks.map((block) => (
         <div
           key={block.id}
@@ -69,9 +86,11 @@ function OneColumn({ blocks }: { blocks: SiteGridBlock[] }) {
 function BesideGrid({
   blocks,
   layouts,
+  preview,
 }: {
   blocks: SiteGridBlock[];
   layouts?: PageLayouts;
+  preview: boolean;
 }) {
   // The side column (the profile) stays in view on a tablet and a desktop.
   const placed = blocks.map((block) => ({
@@ -81,9 +100,9 @@ function BesideGrid({
   const specs = blocks.map(({ id, kind, side }) => ({ i: id, kind, side }));
   return (
     <SiteGrid
-      as="main"
-      id={PAGE_TOP_ID}
-      tabIndex={-1}
+      {...(preview
+        ? { as: 'div' as const }
+        : { as: 'main' as const, id: PAGE_TOP_ID, tabIndex: -1 })}
       data-frame="beside"
       blocks={placed}
       layouts={besideLayouts(specs, layouts)}
