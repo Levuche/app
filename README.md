@@ -27,6 +27,46 @@ a phone, a tablet and a desktop, open the sample page at `/preview`
 (`/preview?layout=column` for one column, `?scheme=dark` for the creator's
 dark colours).
 
+## Start here
+
+This part is for anyone picking up the work, a developer or an AI agent,
+with no history of earlier chats.
+
+1. **Read issue [#36](https://github.com/Levuche/app/issues/36).** It has
+   the order of work, where each piece stands and what waits on an owner.
+   Each issue it lists has a "Done when" checklist: tick it as you go.
+2. **File the issue first.** Every change starts as an issue with a priority
+   label (`P0: before launch`, `P1: soon after` or `P2: later`) and an area
+   label such as `editor` or `dashboard`. Update the issue as the work moves,
+   so the next person can carry on from where you stopped.
+3. **One issue, one branch, one pull request.** Branch from `dev` as
+   `type/short-name`, add or update the tests, and open one pull request into
+   `dev` that says `Closes #N`.
+4. **A change is done when** it has its tests, its notes in `docs/`, a help
+   guide in `docs/help/` where creators see it, and it has been tried on a
+   phone, a tablet and a desktop at app-dev.levuche.com after the merge.
+
+These rules always hold:
+
+- Never name another product, company or site as the source of an idea, in
+  an issue, a pull request, a commit or the code.
+- Never commit a secret, a token, the Buildbase organization id or
+  environment key, or anyone's email address. The repo is public, so
+  screenshots and recordings posted here mustn't show them either.
+- Keep the GitHub Actions allow-list strict: use an outside action only when
+  nothing already allowed does the job, and ask an owner to allow it.
+- Blocks and the theme come from [@levuche/ui](https://github.com/Levuche/ui)
+  and [@levuche/kit](https://github.com/Levuche/kit), installed by release
+  tag. Change them in those repos, not here.
+- Use what Buildbase already provides (sign-in, workspaces, members, roles,
+  billing) before writing your own.
+- Build against Buildbase's development environment, and copy nothing to
+  production.
+
+The notes: [sign-in](docs/AUTH.md), [the database](docs/DATABASE.md),
+[deploys](docs/DEPLOY.md) and [branches](docs/BRANCHES.md). Guides for
+creators are in [docs/help](docs/help).
+
 ## Stack
 
 - Next.js 16 and React 19, on Cloudflare Workers through OpenNext
@@ -59,11 +99,59 @@ open yet; [docs/AUTH.md](docs/AUTH.md) has the settings.
 | `npm run e2e:build && npm run e2e` | The end-to-end and accessibility tests, signed in through a stand-in Buildbase |
 | `npm run cf:preview`               | The Cloudflare Workers build, run locally                                      |
 
+The end-to-end tests need Playwright's Chromium once
+(`npx playwright install --with-deps chromium`). They also run on every pull
+request, so where Chromium won't install, push and read the CI result.
+Preview links on workers.dev can't read the levuche.com sign-in cookie, so
+they only show the signed-out screen: check signed-in screens at
+app-dev.levuche.com after the merge.
+
+## Settings and secrets
+
+Names only here: values never go in the repo.
+
+| Name                                             | What it is                                                               | Where the value lives                                                                           |
+| ------------------------------------------------ | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_APP_URL`                            | The app's own address                                                    | `.env.local`; the deploy workflow sets it for dev and production                                |
+| `NEXT_PUBLIC_BUILDBASE_ORG_ID`                   | The Buildbase organization                                               | `.env.local`; GitHub variable `BUILDBASE_ORG_ID`                                                |
+| `NEXT_PUBLIC_BUILDBASE_ENVIRONMENT`              | The Buildbase development environment's key, empty in production         | `.env.local`; GitHub variable `BUILDBASE_ENVIRONMENT`                                           |
+| `NEXT_PUBLIC_BUILDBASE_CLIENT_ID`                | The app's sign-in client                                                 | `.env.local`; GitHub variables `BUILDBASE_CLIENT_ID` (dev) and `BUILDBASE_PRODUCTION_CLIENT_ID` |
+| `NEXT_PUBLIC_BUILDBASE_REDIRECT_URL`             | Where sign-in comes back to, which must be on the client's redirect list | `.env.local`; the deploy workflow sets it                                                       |
+| `BUILDBASE_CLIENT_SECRET`                        | The sign-in client's secret                                              | `.env.local`; each Worker's secrets (`npx wrangler secret put`)                                 |
+| `CLOUDFLARE_API_TOKEN`                           | Deploys the Workers and applies database migrations                      | GitHub secret, with the scopes in [docs/DEPLOY.md](docs/DEPLOY.md)                              |
+| `CLOUDFLARE_ACCOUNT_ID`                          | The Cloudflare account, not secret                                       | GitHub variable                                                                                 |
+| `CF_ACCESS_CLIENT_ID`, `CF_ACCESS_CLIENT_SECRET` | Optional: let the checks past Cloudflare Access on the dev app           | GitHub secrets                                                                                  |
+
+The organization id, environment key and client ids come from the Buildbase
+console: ask an owner for your local values. The end-to-end tests need none
+of them, because they use made-up values (`e2e/e2e.env`) and a stand-in
+Buildbase (`e2e/mock-buildbase.mjs`).
+
+On Cloudflare, the Worker `levuche-app` serves app.levuche.com from `main`
+and `levuche-app-dev` serves app-dev.levuche.com from `dev`. Each has its own
+D1 database (`levuche-app`, `levuche-app-dev`) on the binding `DB`; the
+deploy applies the migrations in `migrations/`.
+
 ## How work moves
 
 Branches go `type/short-name` > `dev` > `main` ([docs/BRANCHES.md](docs/BRANCHES.md)).
 Merging into `dev` deploys app-dev.levuche.com; merging `dev` into `main`
 deploys app.levuche.com ([docs/DEPLOY.md](docs/DEPLOY.md)).
+
+The workflows: `ci.yml` checks, builds and tests every push and pull
+request; `preview.yml` uploads each pull request into `dev` as a preview and
+tests it; `deploy.yml` applies database migrations and deploys after each
+merge into `dev` or `main`. A merge into `dev` needs an approval from someone
+other than the author, so a pull request an agent opens is approved by a
+person.
+
+Only an owner can:
+
+- merge without that approval
+- change GitHub secrets, variables, rulesets and the Actions allow-list
+- change the Buildbase console (sign-in clients, roles, settings) and the
+  Cloudflare account (tokens, Workers, databases, Access)
+- set a Worker's secrets
 
 ## Help and feedback
 
