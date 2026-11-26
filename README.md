@@ -6,7 +6,8 @@ page editor. The marketing site is
 [Levuche/website](https://github.com/Levuche/website); creator sites on
 levuche.page are built from [@levuche/ui](https://github.com/Levuche/ui).
 
-Right now it has sign-in with Buildbase ([docs/AUTH.md](docs/AUTH.md)) and
+Right now it has sign-in with Buildbase ([docs/AUTH.md](docs/AUTH.md)), the
+database for sites and pages ([docs/DATABASE.md](docs/DATABASE.md)) and
 the creator page layout. The dashboard and the editor come next; the plan is
 issue #36.
 
@@ -35,6 +36,8 @@ dark colours).
 - Playwright with axe for end-to-end and accessibility tests
 - Buildbase for sign-in ([docs/AUTH.md](docs/AUTH.md)), and later billing
   and selling
+- Cloudflare D1 for sites, pages and published versions
+  ([docs/DATABASE.md](docs/DATABASE.md))
 
 ## Run it
 
@@ -42,6 +45,7 @@ dark colours).
 nvm use            # Node 22
 npm ci
 cp .env.example .env.local
+npx wrangler d1 migrations apply DB --local   # the local database
 npm run dev        # http://localhost:3000
 ```
 
@@ -51,6 +55,7 @@ open yet; [docs/AUTH.md](docs/AUTH.md) has the settings.
 | Command                            | What it does                                                                   |
 | ---------------------------------- | ------------------------------------------------------------------------------ |
 | `npm run check`                    | ESLint, Prettier and the type check                                            |
+| `npm test`                         | The database tests, on a local D1                                              |
 | `npm run e2e:build && npm run e2e` | The end-to-end and accessibility tests, signed in through a stand-in Buildbase |
 | `npm run cf:preview`               | The Cloudflare Workers build, run locally                                      |
 

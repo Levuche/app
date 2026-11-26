@@ -1,7 +1,8 @@
 name: CI
 
-# Lint, Prettier, the type check, the OpenNext build, a Wrangler dry run and
-# the end-to-end tests on every push and pull request. No secrets.
+# Lint, Prettier, the type check, the database tests (the migrations applied
+# to a throwaway local D1), the OpenNext build, a Wrangler dry run and the
+# end-to-end tests on every push and pull request. No secrets.
 
 on:
   workflow_dispatch:
@@ -71,6 +72,9 @@ jobs:
 
       - name: Type check
         run: npm run typecheck
+
+      - name: Database tests (migrations on a throwaway local D1)
+        run: npm test
 
       - name: Build for Cloudflare Workers (OpenNext, runs next build)
         run: npm run cf:build

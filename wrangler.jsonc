@@ -26,6 +26,17 @@
       "simple": { "limit": 20, "period": 60 },
     },
   ],
+  // The app's own database: sites, pages, blocks, layouts and published
+  // versions (docs/DATABASE.md). Migrations in migrations/ run on deploy.
+  // Bindings aren't inherited, so env.dev names its own database.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "levuche-app",
+      "database_id": "1b7f401f-6ef9-4dda-83e7-a7f45f7aaa75",
+      "migrations_dir": "migrations",
+    },
+  ],
   // Production: app.levuche.com only (no workers.dev address). The
   // levuche.com zone is on the same Cloudflare account as the website.
   "routes": [{ "pattern": "app.levuche.com", "custom_domain": true }],
@@ -47,6 +58,14 @@
           "name": "AUTH_LIMITER",
           "namespace_id": "47203",
           "simple": { "limit": 20, "period": 60 },
+        },
+      ],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "levuche-app-dev",
+          "database_id": "4ee5a7b5-da54-41f2-920f-fff0a7f0bbea",
+          "migrations_dir": "migrations",
         },
       ],
     },
