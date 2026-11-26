@@ -9,6 +9,9 @@
 //   that starts "e2e-" is a creator of its own, so each test can start with
 //   no sites; any other session gets 401, as Buildbase does for an ended one.
 // - POST .../logout answers success.
+// - GET .../<org>/settings answers the organization's settings as the
+//   Buildbase development environment has them. The SDK's workspace switcher
+//   waits for these: without them it keeps asking and never opens.
 // - .../workspaces: list, create (409 for a name the creator already has),
 //   get, permissions/me and delete, for members only (403 otherwise), with
 //   the roles and permission set up in the Buildbase development environment.
@@ -39,12 +42,47 @@ function creator(session) {
   return { ...CREATOR, id, email: `${id}@example.com` };
 }
 
-// What each role may do (app:site:edit is the app's own permission).
-const PERMISSIONS = {
-  admin: ['app:site:edit', 'workspace:manage'],
-  editor: ['app:site:edit'],
-  viewer: [],
+// The development environment's settings (Settings > Workspaces), with what
+// each role may do (app:site:edit is the app's own permission).
+const SETTINGS = {
+  billing: { onboarding: { mode: 'none' } },
+  workspace: {
+    mode: 'platform',
+    roles: ['admin', 'editor', 'viewer'],
+    defaultRole: 'viewer',
+    autoCreateFirst: false,
+    canCreateWorkspace: true,
+    canInviteMembers: true,
+    showSwitcher: true,
+    maxWorkspaces: 20,
+    maxWorkspacesPerUser: 5,
+    maxWorkspaceUsers: 10,
+    customPermissions: [
+      { key: 'app:site:edit', label: 'Edit the site', group: 'Site' },
+    ],
+    permissions: {
+      admin: [
+        'workspace:settings:view',
+        'workspace:settings:edit',
+        'workspace:members:view',
+        'workspace:members:invite',
+        'workspace:members:remove',
+        'workspace:members:role-change',
+        'workspace:billing:view',
+        'workspace:billing:manage',
+        'app:site:edit',
+      ],
+      editor: [
+        'workspace:settings:view',
+        'workspace:members:view',
+        'workspace:billing:view',
+        'app:site:edit',
+      ],
+      viewer: ['workspace:settings:view', 'workspace:members:view'],
+    },
+  },
 };
+const PERMISSIONS = SETTINGS.workspace.permissions;
 
 /** Workspace id -> { workspace, roles: Map of user id -> role }. */
 const workspaces = new Map();
@@ -125,6 +163,12 @@ createServer(async (req, res) => {
   }
 
   const user = creator(req.headers['x-session-id']);
+  if (
+    req.method === 'GET' &&
+    /^\/api\/v1\/public\/(?!workspaces\/)[\w-]+\/settings$/.test(path)
+  ) {
+    return send(res, 200, SETTINGS);
+  }
   if (req.method === 'GET' && path.endsWith('/profile')) {
     return user
       ? send(res, 200, user)
@@ -149,7 +193,7 @@ createServer(async (req, res) => {
         workspaceId: _id,
         name,
         users: [user],
-        roles: Object.keys(PERMISSIONS),
+        roles: SETTINGS.workspace.roles,
         createdBy: user.id,
         features: {},
       };

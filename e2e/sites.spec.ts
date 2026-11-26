@@ -67,7 +67,8 @@ test('a taken address is refused and leaves nothing behind', async ({
   await page.getByLabel('Site name').fill('Second');
   await page.getByLabel('Address').fill(handle);
   await page.getByRole('button', { name: 'Make the site' }).click();
-  await expect(page.getByRole('alert')).toHaveText(
+  // The form's alert, not Next's route announcer (also an alert).
+  await expect(page.getByRole('alert').filter({ hasText: handle })).toHaveText(
     `${handle}.levuche.page is taken. Try another.`
   );
   await expect(page.getByLabel('Site name')).toHaveValue('Second');
