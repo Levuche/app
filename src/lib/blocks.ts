@@ -219,3 +219,79 @@ export function readyProps(type: string, props: unknown): ReadyBlock {
   const look = readFields(panel.look, value);
   return { props: { ...look.props, ...shown.props }, missing: shown.missing };
 }
+
+/** Every link and picture typed into `value`, with its field, at any depth. */
+function addresses(
+  fields: readonly SettingField[],
+  value: Record<string, unknown>
+): { field: SettingField; value: string }[] {
+  return fields.flatMap((field) => {
+    const own = value[field.name];
+    if ((field.type === 'link' || field.type === 'picture') && own)
+      return typeof own === 'string' && own.trim()
+        ? [{ field, value: own }]
+        : [];
+    if (field.type === 'group' && isRecord(own))
+      return addresses(field.fields, own);
+    if (field.type === 'list' && Array.isArray(own))
+      return own.flatMap((item) =>
+        field.fields && isRecord(item)
+          ? addresses(field.fields, item)
+          : field.of === 'link' && typeof item === 'string' && item.trim()
+            ? [
+                {
+                  field: { ...field, type: 'link' } as SettingField,
+                  value: item,
+                },
+              ]
+            : []
+      );
+    return [];
+  });
+}
+
+/**
+ * What stops a block from going live as the creator means it: needed
+ * fields left empty, and links or pictures that won't open (the page would
+ * quietly leave them out). Empty when the block is ready.
+ */
+export function blockProblems(type: string, props: unknown): string[] {
+  const panel = blockPanel(type);
+  if (!panel) return ['Levuche doesn’t know this block. Remove it.'];
+  const value = isRecord(props) ? props : {};
+  const problems: string[] = [];
+  const started = new Set<string>();
+  for (const field of panel.settings) {
+    const items = value[field.name];
+    if (field.type !== 'list' || !field.fields || !Array.isArray(items))
+      continue;
+    const unfinished = items.filter(
+      (item) =>
+        isRecord(item) &&
+        Object.values(item).some((v) => v !== '' && v !== undefined) &&
+        readFields(field.fields ?? [], item).missing.length > 0
+    ).length;
+    if (unfinished) {
+      started.add(field.label);
+      const item = (field.itemLabel ?? 'item').toLowerCase();
+      problems.push(
+        unfinished === 1
+          ? `Finish or remove the unfinished ${item} in ${field.label.toLowerCase()}.`
+          : `Finish or remove ${unfinished} unfinished ${item}s in ${field.label.toLowerCase()}.`
+      );
+    }
+  }
+  // A list with an unfinished item already says what to do.
+  for (const label of readyProps(type, props).missing)
+    if (!started.has(label))
+      problems.unshift(`Fill in ${label.toLowerCase()}.`);
+  for (const { field, value: address } of addresses(panel.settings, value)) {
+    if (!fitsValue(field, address))
+      problems.push(
+        field.type === 'picture'
+          ? `A picture address has to start with https://.`
+          : `“${address.slice(0, 60)}” isn’t a full link. Start it with https://.`
+      );
+  }
+  return problems;
+}

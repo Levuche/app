@@ -56,78 +56,6 @@ test('a new creator makes a site and lands on it', async ({ page }) => {
   await expect(page).toHaveURL(new RegExp(`/sites/${id}$`));
 });
 
-test("the overview shows the site's status and copies its link", async ({
-  page,
-  context,
-}) => {
-  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-  const handle = newHandle();
-  await signInAs(page, newCreator());
-  await makeSite(page, 'Overview', handle);
-
-  await expect(page.getByText('Not live yet', { exact: true })).toBeVisible();
-  await expect(page.getByText(`${handle}.levuche.page`)).toBeVisible();
-  // Not live: the address is shown, not linked.
-  await expect(
-    page.getByRole('link', { name: `${handle}.levuche.page` })
-  ).toHaveCount(0);
-  await expectNoA11yViolations(page);
-
-  await page.getByRole('button', { name: 'Copy link' }).click();
-  await expect(
-    page.getByRole('status').filter({ hasText: 'Copied' })
-  ).toHaveText('Copied.');
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
-    `https://${handle}.levuche.page`
-  );
-});
-
-/** Marks a site live in the local database, as publishing (#21) will. */
-function makeLive(handle: string) {
-  execFileSync(
-    'npx',
-    [
-      'wrangler',
-      'd1',
-      'execute',
-      'DB',
-      '--local',
-      '--command',
-      `UPDATE sites SET status = 'live', live_version = 1 WHERE id = (SELECT site_id FROM handles WHERE handle = '${handle}')`,
-    ],
-    { env: { ...process.env, CI: '1' }, stdio: 'pipe' }
-  );
-}
-
-test('an admin takes a live site offline and puts it back', async ({
-  page,
-}) => {
-  const handle = newHandle();
-  await signInAs(page, newCreator());
-  // Not live yet: nothing to take offline.
-  await makeSite(page, 'On and off', handle);
-  await expect(page.getByRole('button', { name: 'Take offline' })).toHaveCount(
-    0
-  );
-
-  makeLive(handle);
-  await page.reload();
-  await expect(page.getByText('Live', { exact: true })).toBeVisible();
-  await expect(
-    page.getByRole('link', { name: `${handle}.levuche.page` })
-  ).toBeVisible();
-
-  await page.getByRole('button', { name: 'Take offline' }).click();
-  await expect(page.getByText('Offline', { exact: true })).toBeVisible();
-  await expect(
-    page.getByRole('link', { name: `${handle}.levuche.page` })
-  ).toHaveCount(0);
-  await expectNoA11yViolations(page);
-
-  await page.getByRole('button', { name: 'Put back online' }).click();
-  await expect(page.getByText('Live', { exact: true })).toBeVisible();
-});
-
 test('the address is checked as it is typed', async ({ page }) => {
   const handle = newHandle();
   await signInAs(page, newCreator());
@@ -170,6 +98,90 @@ test('a kept-back address is refused when sent', async ({ page }) => {
 test('signed out, the address check answers nothing', async ({ request }) => {
   const response = await request.get('/api/handles?handle=sam');
   expect(response.status()).toBe(401);
+});
+
+test("the overview shows the site's status and copies its link", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  const handle = newHandle();
+  await signInAs(page, newCreator());
+  await makeSite(page, 'Overview', handle);
+
+  await expect(page.getByText('Not live yet', { exact: true })).toBeVisible();
+  await expect(page.getByText(`${handle}.levuche.page`)).toBeVisible();
+  // Not live: the address is shown, not linked.
+  await expect(
+    page.getByRole('link', { name: `${handle}.levuche.page` })
+  ).toHaveCount(0);
+  await expectNoA11yViolations(page);
+
+  await page.getByRole('button', { name: 'Copy link' }).click();
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Copied' })
+  ).toHaveText('Copied.');
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    `https://${handle}.levuche.page`
+  );
+});
+
+/**
+ * Marks a site live in the local database, quicker than filling in its
+ * blocks to publish (e2e/publish.spec.ts publishes for real).
+ */
+function makeLive(handle: string) {
+  execFileSync(
+    'npx',
+    [
+      'wrangler',
+      'd1',
+      'execute',
+      'DB',
+      '--local',
+      '--command',
+      `UPDATE sites SET status = 'live', live_version = 1 WHERE id = (SELECT site_id FROM handles WHERE handle = '${handle}')`,
+    ],
+    { env: { ...process.env, CI: '1' }, stdio: 'pipe' }
+  );
+}
+
+test('an admin takes a live site offline and puts it back', async ({
+  page,
+  request,
+}) => {
+  const handle = newHandle();
+  await signInAs(page, newCreator());
+  // Not live yet: nothing to take offline.
+  const id = await makeSite(page, 'On and off', handle);
+  await expect(page.getByRole('button', { name: 'Take offline' })).toHaveCount(
+    0
+  );
+
+  makeLive(handle);
+  // A live site has been bought (#19); going back online checks again.
+  expect(
+    (await request.post(`${MOCK}/e2e/paid`, { data: { workspaceId: id } })).ok()
+  ).toBe(true);
+  await page.reload();
+  await expect(
+    page.getByText('Live, version 1', { exact: true })
+  ).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: `${handle}.levuche.page` })
+  ).toBeVisible();
+
+  await page.getByRole('button', { name: 'Take offline' }).click();
+  await expect(page.getByText('Offline', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: `${handle}.levuche.page` })
+  ).toHaveCount(0);
+  await expectNoA11yViolations(page);
+
+  await page.getByRole('button', { name: 'Put back online' }).click();
+  await expect(
+    page.getByText('Live, version 1', { exact: true })
+  ).toBeVisible();
 });
 
 test('a taken address is refused and leaves nothing behind', async ({

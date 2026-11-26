@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { CopyAddress } from '@/components/copy-address';
 import { OpenSiteSettings } from '@/components/site-switcher';
-import { buttonClasses } from '@/lib/button';
+import { BILLING_VIEW } from '@/lib/billing';
+import { hasDraftChanges } from '@/lib/db';
 import { siteAddress } from '@/lib/handle';
 import { buttonClasses } from '@/lib/button';
 import { SITE_STATUS } from '@/lib/site-status';
@@ -23,8 +24,8 @@ const ROLES: Record<string, string> = {
 
 /**
  * A site's overview: its status, its address with a way to copy it, taking
- * it offline and back (admins), and who you are on it. Edit and Publish join it with the editor (#20) and
- * publishing (#21); stats come later (#27).
+ * it offline and back (admins), editing (#20) and publishing (#21), and who
+ * you are on it. Stats come later (#27).
  */
 export default async function SitePage({ params }: Props) {
   const { site, role, can } = await getSite((await params).workspaceId);
@@ -53,8 +54,18 @@ export default async function SitePage({ params }: Props) {
                   : 'bg-lv-surface-2 text-lv-text rounded-full px-3 py-1 text-sm font-bold'
               }
             >
-              {status.label}
+              {site.status === 'live' && site.liveVersion !== null
+                ? `${status.label}, version ${site.liveVersion}`
+                : status.label}
             </span>
+            {site.liveVersion !== null && hasDraftChanges(site) ? (
+              <span
+                data-draft-changes
+                className="bg-lv-surface-2 text-lv-text rounded-full px-3 py-1 text-sm font-bold"
+              >
+                Draft has changes
+              </span>
+            ) : null}
           </p>
           <p className="text-lv-text-2 m-0">{status.detail}</p>
         </div>
@@ -116,7 +127,16 @@ export default async function SitePage({ params }: Props) {
           Edit your page
         </Link>
       ) : null}
-      <OpenSiteSettings />
+      <Link
+        href={`/sites/${site.workspaceId}/publish`}
+        className={buttonClasses(
+          can(SITE_EDIT) ? 'outline' : 'quiet',
+          'self-start'
+        )}
+      >
+        {can(SITE_EDIT) ? 'Publish' : 'Versions'}
+      </Link>
+      <OpenSiteSettings billing={can(BILLING_VIEW)} />
       {/* Until the dashboard's menu has its own place for it (R2). */}
       <Link
         href="/new"
