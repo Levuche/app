@@ -55,6 +55,32 @@ test('a new creator makes a site and lands on it', async ({ page }) => {
   await expect(page).toHaveURL(new RegExp(`/sites/${id}$`));
 });
 
+test("the overview shows the site's status and copies its link", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  const handle = newHandle();
+  await signInAs(page, newCreator());
+  await makeSite(page, 'Overview', handle);
+
+  await expect(page.getByText('Not live yet', { exact: true })).toBeVisible();
+  await expect(page.getByText(`${handle}.levuche.page`)).toBeVisible();
+  // Not live: the address is shown, not linked.
+  await expect(
+    page.getByRole('link', { name: `${handle}.levuche.page` })
+  ).toHaveCount(0);
+  await expectNoA11yViolations(page);
+
+  await page.getByRole('button', { name: 'Copy link' }).click();
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Copied' })
+  ).toHaveText('Copied.');
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    `https://${handle}.levuche.page`
+  );
+});
+
 test('a taken address is refused and leaves nothing behind', async ({
   page,
 }) => {
