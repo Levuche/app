@@ -127,6 +127,40 @@ test('deleted sites leave the list', async () => {
   assert.deepEqual(await store.list(), []);
 });
 
+test('a live site goes offline and back, and nothing else moves', async () => {
+  const store = siteStore(db, { workspaceId: 'ws-offline' });
+  const site = await store.create('on-off');
+  assert.ok(site);
+  // Never published: there's nothing to take offline.
+  assert.equal(await store.setOffline(site.id, true), false);
+
+  await db
+    .prepare("UPDATE sites SET status = 'live', live_version = 1 WHERE id = ?1")
+    .bind(site.id)
+    .run();
+  assert.equal(
+    await siteStore(db, { workspaceId: 'ws-not-theirs' }).setOffline(
+      site.id,
+      true
+    ),
+    false
+  );
+  assert.equal(await store.setOffline(site.id, true), true);
+  assert.equal((await store.get(site.id))?.status, 'offline');
+  assert.equal(await store.setOffline(site.id, true), false);
+  assert.equal(await store.setOffline(site.id, false), true);
+  assert.equal((await store.get(site.id))?.status, 'live');
+  assert.equal((await store.get(site.id))?.liveVersion, 1);
+
+  // A site the team paused stays paused.
+  await db
+    .prepare("UPDATE sites SET status = 'paused' WHERE id = ?1")
+    .bind(site.id)
+    .run();
+  assert.equal(await store.setOffline(site.id, false), false);
+  assert.equal(await store.setOffline(site.id, true), false);
+});
+
 test('a new site opens with the starting layout, in order', async () => {
   const store = siteStore(db, { workspaceId: 'ws-starter' });
   const site = await store.create('starter', starterBlocks('Sam Rivera'));
