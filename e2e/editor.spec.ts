@@ -61,7 +61,7 @@ test('a creator fills in their links and sees them in the preview', async ({
 
   // Fill in a link: it shows in the preview and saves by itself.
   await page.getByRole('button', { name: 'Links', exact: true }).click();
-  await page.getByRole('button', { name: 'Add link' }).click();
+  await page.getByRole('button', { name: 'Add link', exact: true }).click();
   await page.getByLabel(/^Title/).fill('Order a cake');
   await page.getByLabel(/^Address/).fill('https://example.com/cakes');
   await expect(
@@ -95,7 +95,9 @@ test('blocks are added, moved and removed', async ({ page }) => {
   await expect(
     page.getByRole('heading', { name: 'Text', level: 2 })
   ).toBeVisible();
-  await page.getByLabel(/^Text/).fill('Fresh bread every **Saturday**.');
+  await page
+    .getByRole('textbox', { name: /^Text/ })
+    .fill('Fresh bread every **Saturday**.');
   await expect(
     page.locator('[data-preview-screen] [data-block="text-block"]')
   ).toContainText('Fresh bread every Saturday.');
