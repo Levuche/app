@@ -76,6 +76,12 @@ jobs:
       - name: Database tests (migrations on a throwaway local D1)
         run: npm test
 
+      - name: Bundle the sites Worker (dry run, no deploy)
+        run: |
+          npm run sites:build 2>&1 | tee sites-output.txt
+          echo "## Sites Worker" >> "$GITHUB_STEP_SUMMARY"
+          grep "Total Upload" sites-output.txt >> "$GITHUB_STEP_SUMMARY" || true
+
       - name: Build for Cloudflare Workers (OpenNext, runs next build)
         run: npm run cf:build
 

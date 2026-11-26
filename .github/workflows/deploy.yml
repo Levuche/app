@@ -74,6 +74,12 @@ jobs:
       - name: Build and deploy (dev)
         run: npm run cf:deploy:dev
 
+      # The sites Worker (#23): sites-dev.levuche.com/<handle>, reading the
+      # dev database. BUILD_ID keeps pages cached by an older build from
+      # being served.
+      - name: Deploy the sites Worker (dev)
+        run: npm run sites:deploy:dev -- --var "BUILD_ID:${GITHUB_SHA}"
+
       - name: Smoke test
         run: |
           auth=()
@@ -137,6 +143,11 @@ jobs:
 
       - name: Build and deploy (production)
         run: npm run cf:deploy
+
+      # The sites Worker (#23): <handle>.levuche.page. It answers only once
+      # the levuche.page zone has its wildcard record (docs/DEPLOY.md).
+      - name: Deploy the sites Worker (production)
+        run: npm run sites:deploy -- --var "BUILD_ID:${GITHUB_SHA}"
 
       - name: Smoke test
         run: |
