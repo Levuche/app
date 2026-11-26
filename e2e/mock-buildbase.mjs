@@ -9,8 +9,8 @@
 //   any other session gets 401, as Buildbase does for an ended session.
 // - POST .../logout answers 204.
 //
-// Anything else answers 404, and the path is logged so a new SDK call shows
-// up in the test output.
+// Anything else answers 404. Every request is logged, so the test output
+// shows what the app asked for.
 import { createServer } from 'node:http';
 
 // The same values are in e2e/auth.spec.ts.
@@ -47,6 +47,9 @@ async function readJson(req) {
 
 createServer(async (req, res) => {
   const path = new URL(req.url ?? '/', 'http://localhost').pathname;
+  res.on('finish', () =>
+    console.log(`[mock-buildbase] ${req.method} ${path} ${res.statusCode}`)
+  );
   if (req.method === 'OPTIONS') {
     // A wildcard isn't honoured on requests that carry credentials, so the
     // headers the browser asks about are allowed by name.
@@ -86,6 +89,5 @@ createServer(async (req, res) => {
   }
   if (req.method === 'POST' && path.endsWith('/logout')) return send(res, 204);
 
-  console.log(`[mock-buildbase] no answer for ${req.method} ${path}`);
   send(res, 404, { message: 'Not in the test server' });
 }).listen(3101);

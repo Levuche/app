@@ -24,6 +24,10 @@ test('a signed-out visitor sees only the sign-in screen', async ({ page }) => {
 });
 
 test('signing in comes back to the dashboard', async ({ page, context }) => {
+  page.on('console', (m) => console.log(`[browser ${m.type()}] ${m.text()}`));
+  page.on('framenavigated', (f) => {
+    if (f === page.mainFrame()) console.log(`[browser] at ${f.url()}`);
+  });
   await page.goto('/');
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(

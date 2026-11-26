@@ -37,6 +37,7 @@ export default defineConfig({
         {
           command: 'node e2e/mock-buildbase.mjs',
           url: 'http://localhost:3101/health',
+          stdout: 'pipe',
           reuseExistingServer: !process.env.CI,
         },
         {
