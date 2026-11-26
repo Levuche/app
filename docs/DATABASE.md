@@ -63,7 +63,8 @@ form's live check.
 
 `npm test` runs `src/lib/db.test.ts` against a local D1 with every
 migration applied, and checks that one workspace can't read or change
-another's rows.
+another's rows, blocks included (`addBlock`, `updateBlock`, `moveBlock`,
+`removeBlock`, which keep a page's block positions numbered 0, 1, 2…).
 
 ## Changing the tables
 

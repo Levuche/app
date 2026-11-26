@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { CopyAddress } from '@/components/copy-address';
 import { OpenSiteSettings } from '@/components/site-switcher';
+import { buttonClasses } from '@/lib/button';
 import { siteAddress } from '@/lib/handle';
 import { buttonClasses } from '@/lib/button';
 import { SITE_STATUS } from '@/lib/site-status';
@@ -107,6 +108,14 @@ export default async function SitePage({ params }: Props) {
         You&apos;re {ROLES[role] ?? `a ${role}`} on this site.
         {!can(SITE_EDIT) && ' You can look at it, but not change it.'}
       </p>
+      {can(SITE_EDIT) ? (
+        <Link
+          href={`/sites/${site.workspaceId}/edit`}
+          className={buttonClasses('primary', 'self-start')}
+        >
+          Edit your page
+        </Link>
+      ) : null}
       <OpenSiteSettings />
       {/* Until the dashboard's menu has its own place for it (R2). */}
       <Link
