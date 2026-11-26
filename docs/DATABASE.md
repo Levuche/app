@@ -34,7 +34,7 @@ From `migrations/0001_sites_pages_versions.sql`:
 
 | Table      | One row per                                                                          |
 | ---------- | ------------------------------------------------------------------------------------ |
-| `sites`    | creator site, with its Buildbase workspace, status and live version                  |
+| `sites`    | creator site (one per Buildbase workspace), with its status and live version         |
 | `handles`  | name on levuche.page: a site's current one, an old one held for a while, or reserved |
 | `pages`    | page of a site's draft: address, title, order, home, hidden, removed at next publish |
 | `blocks`   | block on a page: its @levuche/ui type and settings                                   |

@@ -20,7 +20,8 @@ CREATE TABLE sites (
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
-CREATE INDEX sites_by_workspace ON sites (workspace_id);
+-- A site and its workspace go together: one site per workspace (#17).
+CREATE UNIQUE INDEX sites_one_per_workspace ON sites (workspace_id);
 
 -- Site addresses on levuche.page. A site's own handle is kind 'site'; an
 -- old one is 'held' until free_at, so links keep working and nobody takes

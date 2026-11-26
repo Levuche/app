@@ -109,6 +109,12 @@ test('changing a page marks the draft as changed', async () => {
   assert.ok((await store.get(site.id))!.draftChangedAt > before);
 });
 
+test('a workspace holds one site', async () => {
+  const store = siteStore(db, { workspaceId: 'ws-one' });
+  assert.ok(await store.create('first'));
+  await assert.rejects(store.create('second'), /sites\.workspace_id/);
+});
+
 test('deleted sites leave the list', async () => {
   const store = siteStore(db, { workspaceId: 'ws-deleted' });
   const site = await store.create('gone');
