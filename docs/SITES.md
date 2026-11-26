@@ -20,10 +20,36 @@ to a workspace work on that site with the role they were given.
 
 `createSite` (`src/app/(app)/new/actions.ts`) checks the name and the handle
 (`src/lib/handle.ts`), makes the Buildbase workspace, then the site, its
-handle and its home page in one database batch. If the handle is taken, the
+handle and its home page with the starting layout (`src/lib/starter.ts`) in
+one database batch. If the handle is taken, the
 workspace is deleted again, so a workspace never stands without its site.
 Buildbase's own refusals become plain messages: a name the creator already
 uses (409), or as many sites as the account allows (402, 403).
+
+### Claiming a handle
+
+A handle is 3 to 30 lowercase letters and numbers with single hyphens
+between them. Levuche's own words, words a visitor could take for an
+official page, and well-known brands are kept back (`RESERVED_HANDLES` in
+`src/lib/handle.ts`); the team can keep more back as `reserved` rows in the
+`handles` table. A handle is unique across every site, and stays held for a
+while after its site is deleted (a `held` row), so old links never land on
+someone else.
+
+As the creator types, the form asks `/api/handles?handle=…` (signed in only)
+after a short pause and says whether the address is free, taken or kept
+back; for a taken one it offers up to three free names close to it. The
+form still works without its script, and `createSite` checks again.
+
+### The starting layout
+
+Every new home page opens with a profile header (named after the site), a
+row of social icons and a list of links, in that order. The lists start
+empty, so nothing made up can go live: the editor asks for them, and the live
+page leaves out a block until it's filled in. Where each block sits on a
+phone, a tablet and a desktop comes from the grid's own arrangement until
+the creator moves something. More layouts to pick from, colours and fonts
+come later (#3).
 
 Buildbase's switcher hides its own "Create workspace" button, so every site
 is made through `/new` with a handle.
