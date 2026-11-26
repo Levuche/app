@@ -32,19 +32,24 @@ dark colours).
 This part is for anyone picking up the work, a developer or an AI agent,
 with no history of earlier chats.
 
-1. **Read issue [#36](https://github.com/Levuche/app/issues/36).** It has
-   the order of work, where each piece stands and what waits on an owner.
-   Each issue it lists has a "Done when" checklist: tick it as you go.
-2. **File the issue first.** Every change starts as an issue with a priority
-   label (`P0: before launch`, `P1: soon after` or `P2: later`) and an area
+1. **Read the release plan, issue
+   [#45](https://github.com/Levuche/app/issues/45),** then
+   [#36](https://github.com/Levuche/app/issues/36) for the order of work in
+   this repo. Levuche ships in small releases, one milestone each: check an
+   issue's milestone before you start it, work on `R1 Launch` first, and
+   build only the part of an issue that #45 puts in that release. Each issue
+   has a "Done when" checklist: tick it as you go.
+2. **File the issue first.** Every change starts as an issue with a milestone, a
+   priority label (`P0: before launch`, `P1: soon after` or `P2: later`) and an area
    label such as `editor` or `dashboard`. Update the issue as the work moves,
    so the next person can carry on from where you stopped.
 3. **One issue, one branch, one pull request.** Branch from `dev` as
    `type/short-name`, add or update the tests, and open one pull request into
    `dev` that says `Closes #N`.
-4. **A change is done when** it has its tests, its notes in `docs/`, a help
-   guide in `docs/help/` where creators see it, and it has been tried on a
-   phone, a tablet and a desktop at app-dev.levuche.com after the merge.
+4. **A change is done when** its tests pass, including the accessibility
+   checks, and its notes in `docs/` are current. The phone, tablet and
+   desktop check on app-dev.levuche.com, the recording and the help guides
+   in `docs/help/` happen once per release, not for every pull request.
 
 These rules always hold:
 
