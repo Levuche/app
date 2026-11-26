@@ -5,12 +5,31 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useTransition } from 'react';
 import { buttonClasses } from '@/lib/button';
 
+/** Set just before the page loads again after sign-in, so it happens once. */
+const RELOADED_KEY = 'lv-signed-in-reload';
+
+/**
+ * Whether this page may load again for a new session: once per ten seconds,
+ * so a server that still says "signed out" can't send it round in a loop.
+ */
+function mayReload(): boolean {
+  try {
+    const last = Number(window.sessionStorage.getItem(RELOADED_KEY));
+    if (last && Date.now() - last < 10_000) return false;
+    window.sessionStorage.setItem(RELOADED_KEY, String(Date.now()));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * The sign-in button for a signed-out visitor. Buildbase's hosted page signs
  * them in, or creates their account, then brings them back to this same
  * address. Once the browser holds a session (back from the hosted page, or
- * signed in on levuche.com in another tab), the server's view is refreshed
- * so the page they asked for appears.
+ * signed in on levuche.com in another tab), the page loads again so the one
+ * they asked for appears. A full load, not router.refresh(): this screen is
+ * the unauthorized() boundary, which a refresh alone can leave in place.
  */
 export function SignInButton() {
   const auth = useSaaSAuth();
@@ -18,7 +37,9 @@ export function SignInButton() {
   const [refreshing, startRefresh] = useTransition();
 
   useEffect(() => {
-    if (auth.isAuthenticated) startRefresh(() => router.refresh());
+    if (!auth.isAuthenticated) return;
+    if (mayReload()) window.location.reload();
+    else startRefresh(() => router.refresh());
   }, [auth.isAuthenticated, router]);
 
   if (auth.isSessionUnverified) {
@@ -30,7 +51,8 @@ export function SignInButton() {
     );
   }
 
-  const busy = auth.isLoading || auth.isRedirecting || refreshing;
+  const busy =
+    auth.isLoading || auth.isRedirecting || auth.isAuthenticated || refreshing;
   return (
     <button
       type="button"
