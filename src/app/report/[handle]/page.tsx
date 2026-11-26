@@ -52,8 +52,7 @@ export default async function ReportPage({ params, searchParams }: Props) {
       <PageShell>
         <h1 className="text-h1 m-0">Report a page</h1>
         <p className="m-0">
-          There&apos;s no live page at {address}, so there&apos;s nothing to
-          report.
+          There’s no live page at {address}, so there’s nothing to report.
         </p>
       </PageShell>
     );
@@ -75,18 +74,16 @@ export default async function ReportPage({ params, searchParams }: Props) {
           <input type="hidden" name="handle" value={handle} />
           <input type="hidden" name="path" value={page.slice(0, 200)} />
           <p className="m-0">
-            Tell the Levuche team what&apos;s wrong with{' '}
+            Tell the Levuche team what’s wrong with{' '}
             <span className="font-semibold break-all">
               {address}
               {page ? `/${page}` : ''}
             </span>
-            . You don&apos;t need an account, and the creator won&apos;t see who
-            reported it.
+            . You don’t need an account, and the creator won’t see who reported
+            it.
           </p>
           <fieldset className="m-0 flex flex-col gap-3 border-0 p-0">
-            <legend className="mb-3 p-0 font-semibold">
-              What&apos;s wrong?
-            </legend>
+            <legend className="mb-3 p-0 font-semibold">What’s wrong?</legend>
             {Object.entries(REPORT_REASONS).map(([value, label]) => (
               <label key={value} className="flex items-center gap-3">
                 <input

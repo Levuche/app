@@ -39,8 +39,8 @@ export function PausedNotice({
         {notice.reason
           ? `Someone reported it, and we paused it for: ${REPORT_REASONS[notice.reason].toLowerCase()}.`
           : 'Someone reported it, and we paused it while we look.'}{' '}
-        Visitors see that it isn&apos;t available. Your draft and versions are
-        all kept.
+        Visitors see that it isn’t available. Your draft and versions are all
+        kept.
       </p>
       {notice.note ? (
         <p className="m-0 break-words whitespace-pre-line">
@@ -49,15 +49,14 @@ export function PausedNotice({
       ) : null}
       {notice.appealedAt ? (
         <p className="m-0 font-semibold">
-          We got your request on {when(notice.appealedAt)}, and we&apos;ll look
+          We got your request on {when(notice.appealedAt)}, and we’ll look
           again.
         </p>
       ) : canAppeal ? (
         <form action={askToLookAgain} className="flex flex-col gap-3">
           <input type="hidden" name="workspaceId" value={workspaceId} />
           <label htmlFor="appeal" className="font-semibold">
-            If you think this is a mistake, tell us why and we&apos;ll look
-            again.
+            If you think this is a mistake, tell us why and we’ll look again.
           </label>
           <textarea
             id="appeal"

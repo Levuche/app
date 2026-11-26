@@ -173,7 +173,10 @@ test('the team pauses a reported site, the creator appeals, the team unpauses', 
   await expect(log.filter({ hasText: handle }).first()).toContainText(
     'Unpaused'
   );
-  await expect(log.filter({ hasText: `Paused ${handle}` })).toHaveCount(1);
+  // hasText ignores case, so anchor it: "Unpaused" holds "paused" too.
+  await expect(
+    log.filter({ hasText: new RegExp(`^Paused ${handle}\\b`) })
+  ).toHaveCount(1);
 
   await signInAs(page, creator);
   await page.goto(`/sites/${id}`);
