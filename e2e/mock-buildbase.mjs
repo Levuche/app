@@ -7,10 +7,11 @@
 // - POST /api/v1/auth/token with that code answers session "e2e-session".
 // - GET .../profile with x-session-id "e2e-session" answers the test creator;
 //   any other session gets 401, as Buildbase does for an ended session.
-// - POST .../logout answers 204.
+// - POST .../logout answers success.
 //
-// Anything else answers 404. Every request is logged, so the test output
-// shows what the app asked for.
+// Answers to the auth routes come in Buildbase's { success, data } wrapper,
+// which the SDK reads them through. Anything else answers 404. Every request
+// is logged, so the test output shows what the app asked for.
 import { createServer } from 'node:http';
 
 // The same values are in e2e/auth.spec.ts.
@@ -66,7 +67,10 @@ createServer(async (req, res) => {
       to: redirect?.success,
       state,
     }).toString();
-    return send(res, 200, { data: { redirectUrl: hosted.href } });
+    return send(res, 200, {
+      success: true,
+      data: { redirectUrl: hosted.href },
+    });
   }
   if (req.method === 'GET' && path === '/hosted') {
     const { searchParams } = new URL(req.url, 'http://localhost');
@@ -79,7 +83,7 @@ createServer(async (req, res) => {
   if (req.method === 'POST' && path === '/api/v1/auth/token') {
     const { code } = await readJson(req);
     return code === CODE
-      ? send(res, 200, { data: { sessionId: SESSION } })
+      ? send(res, 200, { success: true, data: { sessionId: SESSION } })
       : send(res, 400, { message: 'That sign-in code has expired' });
   }
   if (req.method === 'GET' && path.endsWith('/profile')) {
@@ -87,7 +91,9 @@ createServer(async (req, res) => {
       ? send(res, 200, CREATOR)
       : send(res, 401, { message: 'Session expired' });
   }
-  if (req.method === 'POST' && path.endsWith('/logout')) return send(res, 204);
+  if (req.method === 'POST' && path.endsWith('/logout')) {
+    return send(res, 200, { success: true });
+  }
 
   send(res, 404, { message: 'Not in the test server' });
 }).listen(3101);
