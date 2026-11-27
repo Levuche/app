@@ -10,7 +10,7 @@ import type { PageFrame } from '@/lib/page-layout';
  * A small look at the draft on a phone, on the overview, so a creator sees
  * their page without opening the editor. It's only a picture: nothing in it
  * can be pressed or reached with the keyboard, and screen readers skip it
- * (it's inert).
+ * (it's inert and hidden from them).
  */
 export function PagePreview({
   blocks,
@@ -21,6 +21,7 @@ export function PagePreview({
 }) {
   return (
     <div
+      aria-hidden
       inert
       data-overview-preview
       className="border-lv-border relative h-[520px] w-full overflow-hidden rounded-[28px] border-2 text-base"
