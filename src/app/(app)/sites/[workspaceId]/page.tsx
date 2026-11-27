@@ -216,10 +216,7 @@ export default async function SitePage({ params }: Props) {
         </aside>
       </div>
 
-      <Link
-        href="/new"
-        className={buttonClasses('quiet', '-ms-4 self-start')}
-      >
+      <Link href="/new" className={buttonClasses('quiet', '-ms-4 self-start')}>
         <PlusIcon />
         Make another site
       </Link>
