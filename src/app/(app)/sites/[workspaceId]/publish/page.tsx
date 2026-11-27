@@ -5,6 +5,7 @@ import {
   BILLING_MANAGE,
   formatPrice,
   priceWords,
+  whyNoCheckout,
   whyNotForSale,
 } from '@/lib/billing';
 import { requireUser } from '@/lib/buildbase';
@@ -18,7 +19,10 @@ import { buySite, publishSite, rollbackSite, setPreviewLink } from './actions';
 
 type Props = {
   params: Promise<{ workspaceId: string }>;
-  searchParams: Promise<{ done?: string | string[] }>;
+  searchParams: Promise<{
+    done?: string | string[];
+    why?: string | string[];
+  }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -38,7 +42,11 @@ const link = 'text-lv-link font-semibold underline-offset-4 hover:underline';
 /** What the last action did, from ?done= (set by ./actions.ts). */
 function outcome(
   done: string | undefined,
-  { offline, paid }: { offline: boolean; paid: boolean }
+  {
+    offline,
+    paid,
+    why,
+  }: { offline: boolean; paid: boolean; why: string | undefined }
 ) {
   const [kind, number] = done?.split(/-(?=\d+$)/) ?? [];
   if (done === 'paid')
@@ -50,8 +58,7 @@ function outcome(
   if (done === 'needs-buying')
     return 'Buy your page first, then it can go live.';
   if (done === 'not-for-sale') return whyNotForSale(null);
-  if (done === 'not-bought')
-    return 'The checkout didn’t open. Reload the page and try again.';
+  if (done === 'not-bought') return whyNoCheckout(why);
   if (kind === 'published')
     return offline
       ? `Version ${number} is ready. Your site is offline, so visitors see it once you put it back.`
@@ -73,7 +80,7 @@ function outcome(
  */
 export default async function PublishPage({ params, searchParams }: Props) {
   const { workspaceId } = await params;
-  const { done } = await searchParams;
+  const { done, why } = await searchParams;
   const [{ site, can, paid, memberNames }, user] = await Promise.all([
     getSite(workspaceId),
     requireUser(),
@@ -90,6 +97,7 @@ export default async function PublishPage({ params, searchParams }: Props) {
   const said = outcome(Array.isArray(done) ? done[0] : done, {
     offline: site.status === 'offline',
     paid,
+    why: Array.isArray(why) ? why[0] : why,
   });
   const mustBuy = editable && canPublish && !paid && fixes.length === 0;
   const offer = mustBuy ? await siteAddOn(workspaceId) : null;
