@@ -2,7 +2,18 @@
 
 import { PreviewMode } from '@levuche/ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  ComputerIcon,
+  EyeIcon,
+  PhoneIcon,
+  PlusIcon,
+  TabletIcon,
+  TrashIcon,
+} from '@/components/app-icons';
 import { CreatorPage } from '@/components/creator-page';
+import { IconButton } from '@/components/icon-button';
 import { pageBlocks } from '@/components/page-blocks';
 import {
   PictureUploads,
@@ -70,9 +81,9 @@ function pictureUploader(workspaceId: string): UploadPicture {
 
 /** The preview's width on each screen; the grid lays itself out to fit. */
 const SCREENS = {
-  phone: { label: 'Phone', width: 390 },
-  tablet: { label: 'Tablet', width: 820 },
-  desktop: { label: 'Computer', width: 1200 },
+  phone: { label: 'Phone', width: 390, icon: PhoneIcon },
+  tablet: { label: 'Tablet', width: 820, icon: TabletIcon },
+  desktop: { label: 'Computer', width: 1200, icon: ComputerIcon },
 } as const;
 type Screen = keyof typeof SCREENS;
 
@@ -210,60 +221,88 @@ export function PageEditor({
   ));
 
   return (
-    <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+    <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
       <section
         aria-labelledby="editor-blocks"
-        className="flex w-full flex-col gap-5 lg:sticky lg:top-4 lg:max-w-md"
+        className="flex w-full flex-col gap-4 lg:max-w-md xl:max-w-lg"
       >
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-h-control flex flex-wrap items-center justify-between gap-2">
           <h2 id="editor-blocks" className="text-section m-0">
             Blocks
           </h2>
-          <p
-            role="status"
-            data-save={save.kind}
-            className={
-              save.kind === 'error'
-                ? 'text-lv-danger m-0 text-sm font-semibold'
-                : 'text-lv-text-2 m-0 text-sm'
-            }
-          >
-            {readOnly
-              ? 'You can look, but not change this page.'
-              : save.kind === 'saving'
-                ? 'Saving…'
-                : save.kind === 'error'
-                  ? save.message
-                  : 'All changes saved.'}
-          </p>
+          <div className="flex items-center gap-2">
+            <p
+              role="status"
+              data-save={save.kind}
+              className={
+                save.kind === 'error'
+                  ? 'text-lv-danger m-0 text-sm font-semibold'
+                  : 'text-lv-text-2 m-0 flex items-center gap-1.5 text-sm'
+              }
+            >
+              {save.kind === 'saved' && !readOnly ? (
+                <span
+                  aria-hidden
+                  className="bg-lv-success inline-block size-2 rounded-full"
+                />
+              ) : null}
+              {readOnly
+                ? 'You can look, but not change this page.'
+                : save.kind === 'saving'
+                  ? 'Saving…'
+                  : save.kind === 'error'
+                    ? save.message
+                    : 'All changes saved.'}
+            </p>
+            <a
+              href="#editor-preview"
+              className={buttonClasses('outline', 'px-3 lg:hidden')}
+            >
+              <EyeIcon />
+              See preview
+            </a>
+          </div>
         </div>
 
         <ol className="m-0 flex list-none flex-col gap-2 p-0">
           {blocks.map((block, i) => {
             const info = blockPanel(block.type);
             const name = info?.label ?? block.type;
+            const chosen = block.id === selected;
             return (
               <li
                 key={block.id}
                 data-editor-block={block.type}
-                className={`border-lv-border flex flex-wrap items-center gap-2 rounded-xl border-2 p-2 ${
-                  block.id === selected ? 'border-lv-primary' : ''
+                className={`flex flex-wrap items-center gap-1 rounded-xl border-2 p-1.5 transition-colors ${
+                  chosen
+                    ? 'border-lv-primary bg-lv-surface-2'
+                    : 'border-lv-border bg-lv-card hover:border-lv-link'
                 }`}
               >
                 <button
                   type="button"
-                  aria-pressed={block.id === selected}
-                  className="text-lv-text min-h-control flex-1 cursor-pointer bg-transparent px-2 text-start font-[inherit] font-semibold"
+                  aria-pressed={chosen}
+                  className="text-lv-text min-h-control flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-lg bg-transparent px-2 text-start font-[inherit] font-semibold"
                   onClick={() => setSelected(block.id)}
                 >
-                  {name}
+                  <span
+                    aria-hidden
+                    className={`grid size-6 shrink-0 place-items-center rounded-full text-xs font-bold ${
+                      chosen
+                        ? 'bg-lv-primary text-lv-on-primary'
+                        : 'bg-lv-surface-2 text-lv-text-2'
+                    }`}
+                  >
+                    {i + 1}
+                  </span>
+                  <span className="truncate">{name}</span>
                 </button>
                 {readOnly ? null : confirmRemove === block.id ? (
                   <span className="flex flex-wrap items-center gap-1">
-                    <span className="text-sm">Remove {name}?</span>
+                    <span className="px-1 text-sm">Remove {name}?</span>
                     <button
                       type="button"
-                      className={buttonClasses('outline', 'px-3')}
+                      className={buttonClasses('danger', 'px-3')}
                       onClick={() => remove(block.id)}
                     >
                       Remove
@@ -277,33 +316,29 @@ export function PageEditor({
                     </button>
                   </span>
                 ) : (
-                  <span className="flex gap-1">
-                    <button
-                      type="button"
-                      className={buttonClasses('quiet', 'px-3')}
-                      aria-label={`Move ${name} up`}
+                  <span className="flex items-center">
+                    <IconButton
+                      label={`Move ${name} up`}
+                      tip="Move up"
+                      icon={<ArrowUpIcon />}
                       disabled={i === 0}
                       onClick={() => move(block.id, -1)}
-                    >
-                      Up
-                    </button>
-                    <button
-                      type="button"
-                      className={buttonClasses('quiet', 'px-3')}
-                      aria-label={`Move ${name} down`}
+                    />
+                    <IconButton
+                      label={`Move ${name} down`}
+                      tip="Move down"
+                      icon={<ArrowDownIcon />}
                       disabled={i === blocks.length - 1}
                       onClick={() => move(block.id, 1)}
-                    >
-                      Down
-                    </button>
-                    <button
-                      type="button"
-                      className={buttonClasses('quiet', 'px-3')}
-                      aria-label={`Remove ${name}`}
+                    />
+                    <IconButton
+                      label={`Remove ${name}`}
+                      tip="Remove"
+                      align="end"
+                      icon={<TrashIcon />}
+                      className="hover:text-lv-danger"
                       onClick={() => setConfirmRemove(block.id)}
-                    >
-                      Remove
-                    </button>
+                    />
                   </span>
                 )}
               </li>
@@ -317,16 +352,16 @@ export function PageEditor({
         ) : null}
 
         {readOnly ? null : (
-          <div className="flex flex-wrap items-end gap-2">
+          <div className="border-lv-border flex flex-wrap items-end gap-2 rounded-xl border-2 border-dashed p-3">
             <div className="flex min-w-48 flex-1 flex-col gap-1.5">
-              <label htmlFor="add-block" className="font-semibold">
+              <label htmlFor="add-block" className="text-sm font-semibold">
                 Add a block
               </label>
               <select
                 id="add-block"
                 value={adding}
                 onChange={(e) => setAdding(e.target.value)}
-                className="min-h-control border-lv-border bg-lv-card text-lv-text w-full rounded-xl border-2 px-3 text-base sm:text-sm"
+                className="min-h-control border-lv-border bg-lv-card text-lv-text hover:border-lv-link w-full cursor-pointer rounded-xl border-2 px-3 text-base transition-colors sm:text-sm"
               >
                 {EDITOR_BLOCKS.map((type) => (
                   <option key={type} value={type}>
@@ -340,6 +375,7 @@ export function PageEditor({
               className={buttonClasses('primary')}
               onClick={add}
             >
+              <PlusIcon />
               Add
             </button>
           </div>
@@ -348,7 +384,7 @@ export function PageEditor({
         {current && panel ? (
           <section
             aria-labelledby="editor-settings"
-            className="border-lv-border flex flex-col gap-4 border-t-2 pt-5"
+            className="bg-lv-card border-lv-border rounded-box p-box flex flex-col gap-4 border-2"
           >
             <h2 id="editor-settings" className="text-section m-0">
               {panel.label}
@@ -361,8 +397,11 @@ export function PageEditor({
                 onChange={(props) => change(current, props)}
               />
             </PictureUploads.Provider>
-            <details className="flex flex-col gap-4">
-              <summary className="cursor-pointer font-semibold">Look</summary>
+            <details className="group/look border-lv-border flex flex-col gap-4 border-t-2 pt-3">
+              <summary className="hover:text-lv-link flex cursor-pointer list-none items-center justify-between gap-2 font-semibold transition-colors [&::-webkit-details-marker]:hidden">
+                Look
+                <ArrowDownIcon className="transition-transform group-open/look:rotate-180 motion-reduce:transition-none" />
+              </summary>
               <div className="pt-4">
                 <SettingsFields
                   fields={panel.look}
@@ -379,37 +418,45 @@ export function PageEditor({
 
       <section
         aria-labelledby="editor-preview"
-        className="flex min-w-0 flex-1 flex-col gap-3"
+        className="flex min-w-0 flex-1 scroll-mt-4 flex-col gap-4 lg:sticky lg:top-4"
       >
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 id="editor-preview" className="text-section m-0">
+        <div className="min-h-control flex flex-wrap items-center justify-between gap-2">
+          <h2 id="editor-preview" className="text-section m-0 scroll-mt-4">
             Preview
           </h2>
-          <div role="group" aria-label="Screen" className="flex gap-1">
-            {(Object.keys(SCREENS) as Screen[]).map((key) => (
-              <button
-                key={key}
-                type="button"
-                aria-pressed={screen === key}
-                className={buttonClasses(
-                  screen === key ? 'primary' : 'outline',
-                  'px-4'
-                )}
-                onClick={() => setScreen(key)}
-              >
-                {SCREENS[key].label}
-              </button>
-            ))}
+          <div
+            role="group"
+            aria-label="Screen"
+            className="border-lv-border bg-lv-card flex gap-0.5 rounded-full border-2 p-0.5"
+          >
+            {(Object.keys(SCREENS) as Screen[]).map((key) => {
+              const Icon = SCREENS[key].icon;
+              return (
+                <IconButton
+                  key={key}
+                  label={SCREENS[key].label}
+                  aria-pressed={screen === key}
+                  look={screen === key ? 'primary' : 'quiet'}
+                  side="bottom"
+                  align={key === 'desktop' ? 'end' : 'center'}
+                  className="border-0 shadow-none hover:shadow-none"
+                  icon={<Icon />}
+                  onClick={() => setScreen(key)}
+                />
+              );
+            })}
           </div>
         </div>
-        <div
-          data-preview-screen={screen}
-          className="border-lv-border mx-auto w-full overflow-x-auto rounded-2xl border-2 text-base"
-          style={{ maxWidth: SCREENS[screen].width }}
-        >
-          <PreviewMode>
-            <CreatorPage blocks={preview} frame={frame} preview />
-          </PreviewMode>
+        <div className="bg-lv-surface border-lv-border rounded-box border-2 p-2 sm:p-4">
+          <div
+            data-preview-screen={screen}
+            className="bg-lv-bg mx-auto w-full overflow-x-auto rounded-2xl text-base shadow-sm transition-[max-width] duration-200 motion-reduce:transition-none lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto"
+            style={{ maxWidth: SCREENS[screen].width }}
+          >
+            <PreviewMode>
+              <CreatorPage blocks={preview} frame={frame} preview />
+            </PreviewMode>
+          </div>
         </div>
       </section>
     </div>
