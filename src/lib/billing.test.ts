@@ -4,10 +4,13 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { IAddOnOffer } from '@buildbase/sdk';
 import {
+  checkoutRefusal,
   formatPrice,
   isPaid,
   priceWords,
+  refusalTag,
   siteOffer,
+  whyNoCheckout,
   whyNotForSale,
 } from './billing.ts';
 
@@ -84,4 +87,47 @@ test('the price says how long it lasts', () => {
     '$9.00 a year'
   );
   assert.equal(priceWords({ price: null, shape: 'lifetime' }), null);
+});
+
+test('a refused checkout keeps what Buildbase said', () => {
+  const error = Object.assign(new Error('Payments are not set up'), {
+    status: 409,
+    code: 'STRIPE_NOT_CONNECTED',
+  });
+  assert.deepEqual(checkoutRefusal(error), {
+    status: 409,
+    code: 'STRIPE_NOT_CONNECTED',
+    reason: null,
+    message: 'Payments are not set up',
+  });
+  assert.equal(checkoutRefusal(null).message, 'unknown');
+  assert.equal(checkoutRefusal('boom').message, 'boom');
+});
+
+test('only a code or a status goes in the address', () => {
+  assert.equal(
+    refusalTag({ status: 409, code: 'STRIPE_NOT_CONNECTED' }),
+    'STRIPE_NOT_CONNECTED'
+  );
+  assert.equal(refusalTag({ status: 502, code: null }), '502');
+  assert.equal(refusalTag({ status: 400, code: 'not a code <b>' }), '400');
+  assert.equal(refusalTag({ status: null, code: null }), null);
+});
+
+test('the page says why the checkout did not open', () => {
+  assert.equal(
+    whyNoCheckout(undefined),
+    'The checkout didn’t open. Reload the page and try again.'
+  );
+  assert.match(whyNoCheckout('STRIPE_NOT_CONNECTED'), /aren’t set up/);
+  assert.match(
+    whyNoCheckout('STRIPE_NOT_CONNECTED'),
+    /Buildbase said STRIPE_NOT_CONNECTED/
+  );
+  assert.match(whyNoCheckout('SOME_NEW_CODE'), /Buildbase said SOME_NEW_CODE/);
+  assert.match(whyNoCheckout('500'), /error 500/);
+  assert.equal(
+    whyNoCheckout('<script>'),
+    'The checkout didn’t open. Reload the page and try again.'
+  );
 });
