@@ -111,7 +111,10 @@ by the app. It reads the app's database and never writes to it.
 
 - **Addresses.** `<handle>.levuche.page` in production. The dev Worker
   answers on one address, `sites-dev.levuche.com/<handle>`, and is never
-  indexed. `levuche.page` itself and `www` redirect to levuche.com.
+  indexed. `levuche.page` itself shows a short intro to Levuche (what it
+  does, Get started into the app, Learn more on levuche.com); `www` and
+  any other path there redirect to it. The dev host's root shows the same
+  intro.
 - **The page.** The live version's snapshot, drawn with the same blocks and
   frame as the editor's preview, as static HTML with the stylesheet inlined
   (`sites/src/site.css`, built by `npm run sites:css`). No scripts run, so
