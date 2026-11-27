@@ -96,7 +96,11 @@ function OpenInBrowser({
 
 const MISSING: Record<
   Missing,
-  { title: string; say: (handle: string) => string; link?: 'claim' | 'home' }
+  {
+    title: string;
+    say: (handle: string) => string;
+    link?: 'claim' | 'home' | 'retry';
+  }
 > = {
   free: {
     title: 'This address is free',
@@ -130,17 +134,24 @@ const MISSING: Record<
     say: () => 'This site has no page at this address.',
     link: 'home',
   },
+  error: {
+    title: 'Something went wrong',
+    say: () => 'This page didn’t load. Try again in a moment.',
+    link: 'retry',
+  },
 };
 
 function Missing({
   why,
   handle,
   base,
+  url,
   app,
 }: {
   why: Missing;
   handle: string;
   base: string;
+  url: string;
   app: string;
 }) {
   const { title, say, link } = MISSING[why];
@@ -148,6 +159,9 @@ function Missing({
     'bg-lv-primary text-lv-on-primary rounded-full px-5 py-3 font-semibold no-underline';
   return (
     <main className="mx-auto flex min-h-[80dvh] max-w-xl flex-col items-center justify-center gap-4 px-6 py-16 text-center">
+      <a href={WEBSITE} className="text-logo text-lv-brand mb-4 no-underline">
+        levuche
+      </a>
       <h1 className="text-h2 m-0">{title}</h1>
       <p className="text-lv-text-2 m-0">{say(handle)}</p>
       {link === 'claim' ? (
@@ -160,6 +174,10 @@ function Missing({
       ) : link === 'home' ? (
         <a className={linkClass} href={`${base}/`}>
           Go to the home page
+        </a>
+      ) : link === 'retry' ? (
+        <a className={linkClass} href={url}>
+          Try again
         </a>
       ) : null}
       <a
@@ -220,13 +238,20 @@ export const render: Renderer = {
       ),
     });
   },
-  missing({ why, site, inApp, app }) {
+  missing({ why, site, inApp, url, app }) {
+    const here = site.path ? `${site.base}/${site.path}` : `${site.base}/`;
     return document({
       title: MISSING[why].title,
-      url: site.path ? `${site.base}/${site.path}` : `${site.base}/`,
+      url: here,
       inApp,
       children: (
-        <Missing why={why} handle={site.handle} base={site.base} app={app} />
+        <Missing
+          why={why}
+          handle={site.handle}
+          base={site.base}
+          url={why === 'error' ? url : here}
+          app={app}
+        />
       ),
     });
   },

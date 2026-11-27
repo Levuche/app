@@ -13,9 +13,14 @@
   // The stylesheet sites/build-css.mjs builds is inlined as text.
   "rules": [{ "type": "Text", "globs": ["**/*.css"], "fallthrough": false }],
   "observability": { "enabled": true },
-  // Production: <handle>.levuche.page. The levuche.page zone, its wildcard
-  // DNS record and certificate are set up by the owner first (docs/DEPLOY.md).
-  "routes": [{ "pattern": "*.levuche.page/*", "zone_name": "levuche.page" }],
+  // Production: <handle>.levuche.page, and levuche.page itself, which sends
+  // visitors on to levuche.com. The levuche.page zone, its DNS records (the
+  // wildcard and the bare domain) and certificate are set up by the owner
+  // first (docs/DEPLOY.md).
+  "routes": [
+    { "pattern": "*.levuche.page/*", "zone_name": "levuche.page" },
+    { "pattern": "levuche.page/*", "zone_name": "levuche.page" },
+  ],
   "workers_dev": false,
   "vars": {
     "SITES_DOMAIN": "levuche.page",
