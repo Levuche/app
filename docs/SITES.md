@@ -111,13 +111,17 @@ by the app. It reads the app's database and never writes to it.
 
 - **Addresses.** `<handle>.levuche.page` in production. The dev Worker
   answers on one address, `sites-dev.levuche.com/<handle>`, and is never
-  indexed. `levuche.page` itself and `www` redirect to levuche.com.
+  indexed. `levuche.page` itself shows a short intro to Levuche (what it
+  does, Get started into the app, Learn more on levuche.com); `www` and
+  any other path there redirect to it. The dev host's root shows the same
+  intro.
 - **The page.** The live version's snapshot, drawn with the same blocks and
   frame as the editor's preview, as static HTML with the stylesheet inlined
   (`sites/src/site.css`, built by `npm run sites:css`). No scripts run, so
   "Back to top" isn't on live sites.
-- **States.** A handle nobody has says it's free and links to make a site,
-  with the name filled in. A name kept for Levuche, or an address no handle
+- **States.** A handle nobody has says it's free, with the same intro as
+  `levuche.page` and Make it yours, which opens the app with the name
+  filled in. A name kept for Levuche, or an address no handle
   could have (too short, two levels deep), says there's no page there. A
   site never published says it isn't live yet; one taken offline or paused
   says it isn't available; a deleted one answers 410. None of these are

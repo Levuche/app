@@ -52,6 +52,9 @@ const renderer: Renderer & { drawn: number } = {
     renderer.drawn += 1;
     return `page ${site.handle}/${page.path} blocks=${page.blocks.length} inApp=${inApp}`;
   },
+  intro({ url }) {
+    return `intro ${url}`;
+  },
   missing({ why }) {
     return `missing ${why}`;
   },
@@ -232,6 +235,7 @@ test('when answering fails, the visitor gets the error page', async () => {
   // And plain text if even that page can't be drawn.
   const broken: Renderer = {
     page: () => '',
+    intro: () => '',
     missing: () => {
       throw new Error('no');
     },
@@ -298,9 +302,24 @@ test('the dev host is never indexed, and only GET and HEAD are answered', async 
     (await get('https://dev-look.levuche.page/', { method: 'POST' })).status,
     405
   );
-  const apex = await get('https://levuche.page/');
-  assert.equal(apex.status, 301);
-  assert.equal(apex.headers.get('Location'), 'https://levuche.com/');
+  // levuche.page itself introduces Levuche; www and other paths go there.
+  const apex = await get('https://levuche.page/?utm_source=bio');
+  assert.equal(apex.status, 200);
+  assert.equal(await apex.text(), 'intro https://levuche.page/');
+  for (const other of [
+    'https://www.levuche.page/',
+    'https://levuche.page/shop',
+  ]) {
+    const moved = await get(other);
+    assert.equal(moved.status, 301, other);
+    assert.equal(moved.headers.get('Location'), 'https://levuche.page/');
+  }
+  const devHome = await serve(
+    new Request('https://sites-dev.levuche.com/'),
+    dev,
+    renderer
+  );
+  assert.equal(await devHome.text(), 'intro https://sites-dev.levuche.com/');
 });
 
 test('a social app’s own browser is told apart, and gets its own copy', async () => {

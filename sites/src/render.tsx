@@ -190,6 +190,94 @@ function Missing({
   );
 }
 
+/** What Levuche does, for the intro on levuche.page itself. */
+const INTRO_POINTS: ReadonlyArray<[string, string]> = [
+  [
+    'Your own address.',
+    'Get yourname.levuche.page: one name, one site, yours alone.',
+  ],
+  [
+    'Ready-made sections.',
+    'Build your page in your own brand. It looks right on every phone.',
+  ],
+  [
+    'Sell what you make.',
+    'Packs, prompts and guides. Buyers pay by card and download straight away.',
+  ],
+  [
+    'One link for every reel.',
+    'Put it in your bio and send every follower to one place.',
+  ],
+  ['Pay once.', '$9 per page, with no monthly fee.'],
+];
+
+/**
+ * What Levuche is, a way to start and a way to read more: levuche.page
+ * itself, and (with `free`) an address nobody has yet, which it offers.
+ */
+function Intro({ app, free }: { app: string; free?: string }) {
+  const button =
+    'inline-flex min-h-12 items-center justify-center rounded-full border-2 px-6 font-semibold no-underline';
+  return (
+    <main className="mx-auto flex min-h-[90dvh] max-w-2xl flex-col justify-center gap-6 px-6 py-16">
+      <a href={WEBSITE} className="text-logo text-lv-brand no-underline">
+        levuche
+      </a>
+      {free ? (
+        <>
+          <h1 className="text-h1 m-0 break-words">
+            {free}.levuche.page is free
+          </h1>
+          <p className="text-lead text-lv-text-2 m-0">
+            Nobody has this address yet. It could be yours: Levuche turns your
+            Instagram link into a small website that sells your packs, prompts
+            and guides.
+          </p>
+        </>
+      ) : (
+        <>
+          <h1 className="text-h1 m-0">Your link in bio, now a shop.</h1>
+          <p className="text-lead text-lv-text-2 m-0">
+            Levuche turns your Instagram link into a small website that sells
+            your packs, prompts and guides.
+          </p>
+        </>
+      )}
+      <ul className="m-0 flex list-none flex-col gap-3 p-0">
+        {INTRO_POINTS.map(([lead, rest]) => (
+          <li key={lead} className="flex gap-3">
+            <span aria-hidden="true" className="text-lv-primary font-bold">
+              ✓
+            </span>
+            <span>
+              <strong>{lead}</strong>{' '}
+              <span className="text-lv-text-2">{rest}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+      <div className="flex flex-wrap gap-3 pt-2">
+        <a
+          href={
+            free
+              ? `${app}/new?handle=${encodeURIComponent(free)}`
+              : `${app}/new`
+          }
+          className={`${button} bg-lv-primary text-lv-on-primary border-transparent`}
+        >
+          {free ? 'Make it yours' : 'Get started'}
+        </a>
+        <a
+          href={WEBSITE}
+          className={`${button} border-lv-border text-lv-link bg-transparent`}
+        >
+          Learn more
+        </a>
+      </div>
+    </main>
+  );
+}
+
 /** The foot of every live page: who made it, and a way to report it (#33). */
 function SiteFoot({
   handle,
@@ -215,6 +303,16 @@ function SiteFoot({
 }
 
 export const render: Renderer = {
+  intro({ inApp, url, app }) {
+    return document({
+      title: 'Levuche: your link in bio, now a shop',
+      description:
+        'Levuche turns your Instagram link into a small website that sells your packs, prompts and guides. Pay $9 once.',
+      url,
+      inApp,
+      children: <Intro app={app} />,
+    });
+  },
   page({ site, page, inApp, app }) {
     const header = page.blocks.find((block) => block.type === 'creator-header')
       ?.props as Record<string, unknown> | undefined;
@@ -244,15 +342,18 @@ export const render: Renderer = {
       title: MISSING[why].title,
       url: here,
       inApp,
-      children: (
-        <Missing
-          why={why}
-          handle={site.handle}
-          base={site.base}
-          url={why === 'error' ? url : here}
-          app={app}
-        />
-      ),
+      children:
+        why === 'free' ? (
+          <Intro app={app} free={site.handle} />
+        ) : (
+          <Missing
+            why={why}
+            handle={site.handle}
+            base={site.base}
+            url={why === 'error' ? url : here}
+            app={app}
+          />
+        ),
     });
   },
 };

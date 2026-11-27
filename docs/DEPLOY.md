@@ -71,7 +71,7 @@ The sites Worker (`sites/`, [SITES.md](SITES.md)) deploys with the app:
 1. The `levuche.page` zone is in the Levuche Cloudflare account. Add a
    proxied wildcard record, `*` AAAA `100::`, so every handle reaches the
    Worker, and a proxied record for the bare domain, `@` AAAA `100::`, so
-   `levuche.page` itself reaches it and is sent on to levuche.com (without
+   `levuche.page` itself reaches it and shows the Levuche intro (without
    it the bare domain doesn't load at all). Universal SSL covers both.
 2. The API token also needs, on the `levuche.page` zone, Workers Routes:
    Edit and Zone: Read.
