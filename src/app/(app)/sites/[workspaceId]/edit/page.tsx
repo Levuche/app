@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { ArrowLeftIcon, PublishIcon } from '@/components/app-icons';
+import { IconLink } from '@/components/icon-button';
+import { buttonClasses } from '@/lib/button';
 import { siteStore } from '@/lib/db';
 import { database, getSite, SITE_EDIT } from '@/lib/sites';
 import { PageEditor } from './page-editor';
@@ -29,18 +32,34 @@ export default async function EditPage({ params, searchParams }: Props) {
   const blocks = await store.blocks(home.id);
 
   return (
-    <main className="px-gutter py-page mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-5">
-      <div className="flex flex-col gap-1">
-        <Link
-          href={`/sites/${workspaceId}`}
-          className="text-lv-link self-start text-sm font-semibold underline-offset-4 hover:underline"
-        >
-          Back to {site.name}
-        </Link>
-        <h1 className="text-title m-0 break-words">Edit your page</h1>
-        <p className="text-lv-text-2 m-0">
-          Changes save as you go. Visitors see them once you publish.
-        </p>
+    <main className="px-gutter py-page mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex min-w-0 items-start gap-2">
+          <IconLink
+            href={`/sites/${workspaceId}`}
+            label={`Back to ${site.name}`}
+            tip="Back"
+            side="bottom"
+            align="start"
+            icon={<ArrowLeftIcon />}
+            className="-ms-2 shrink-0"
+          />
+          <div className="flex min-w-0 flex-col gap-1">
+            <h1 className="text-title m-0 break-words">Edit your page</h1>
+            <p className="text-lv-text-2 m-0">
+              Changes save as you go. Visitors see them once you publish.
+            </p>
+          </div>
+        </div>
+        {can(SITE_EDIT) ? (
+          <Link
+            href={`/sites/${workspaceId}/publish`}
+            className={buttonClasses('primary')}
+          >
+            <PublishIcon />
+            Publish
+          </Link>
+        ) : null}
       </div>
       <PageEditor
         workspaceId={workspaceId}

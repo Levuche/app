@@ -20,7 +20,7 @@ export default async function Home() {
           <li key={site.workspaceId}>
             <Link
               href={`/sites/${site.workspaceId}`}
-              className="bg-lv-card border-lv-border hover:border-lv-link rounded-box p-box flex flex-col gap-1 border-2 no-underline"
+              className="bg-lv-card border-lv-border hover:border-lv-link rounded-box p-box flex flex-col gap-1 border-2 no-underline transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
             >
               <span className="text-item text-lv-text break-words">
                 {site.name}

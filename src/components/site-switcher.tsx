@@ -6,7 +6,9 @@ import {
   WorkspaceSwitcher,
 } from '@buildbase/sdk/react';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useRef } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
+import { CardIcon, UserIcon, UsersIcon } from '@/components/app-icons';
+import { IconButton } from '@/components/icon-button';
 import { buttonClasses } from '@/lib/button';
 
 /** The workspace (site) of the page, from /sites/<workspace id>. */
@@ -96,34 +98,34 @@ export function OpenSiteSettings({ billing = false }: { billing?: boolean }) {
   // Settings open for Buildbase's current workspace, so wait until it's this one.
   const ready = currentWorkspace?._id === pageWorkspace;
 
+  const settings: {
+    tab: Parameters<typeof openWorkspaceSettings>[0];
+    label: string;
+    icon: ReactNode;
+  }[] = [
+    { tab: 'general', label: 'Name and picture', icon: <UserIcon /> },
+    { tab: 'users', label: 'Teammates', icon: <UsersIcon /> },
+  ];
+  if (billing)
+    settings.push({
+      tab: 'subscription',
+      label: 'Billing and receipts',
+      icon: <CardIcon />,
+    });
+
   return (
-    <div className="flex flex-wrap gap-3">
-      <button
-        type="button"
-        disabled={!ready}
-        className={buttonClasses('outline')}
-        onClick={() => openWorkspaceSettings('general')}
-      >
-        Name and picture
-      </button>
-      <button
-        type="button"
-        disabled={!ready}
-        className={buttonClasses('outline')}
-        onClick={() => openWorkspaceSettings('users')}
-      >
-        Teammates
-      </button>
-      {billing ? (
-        <button
-          type="button"
+    <div className="flex flex-wrap gap-1">
+      {settings.map(({ tab, label, icon }, i) => (
+        <IconButton
+          key={tab}
+          label={label}
+          icon={icon}
+          look="outline"
+          align={i === settings.length - 1 ? 'end' : 'center'}
           disabled={!ready}
-          className={buttonClasses('outline')}
-          onClick={() => openWorkspaceSettings('subscription')}
-        >
-          Billing and receipts
-        </button>
-      ) : null}
+          onClick={() => openWorkspaceSettings(tab)}
+        />
+      ))}
     </div>
   );
 }
