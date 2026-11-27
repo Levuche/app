@@ -25,7 +25,7 @@ export type UploadPicture = (
 export const PictureUploads = createContext<UploadPicture | null>(null);
 
 const control =
-  'min-h-control border-lv-border bg-lv-card text-lv-text w-full rounded-xl border-2 px-3 text-base focus-visible:border-lv-primary';
+  'min-h-control border-lv-border bg-lv-card text-lv-text w-full rounded-xl border-2 px-3 text-base focus-visible:border-lv-primary sm:text-sm';
 
 export function SettingsFields({
   fields,

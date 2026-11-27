@@ -101,7 +101,7 @@ export default async function PublishPage({ params, searchParams }: Props) {
     id === user.id ? 'you' : (memberNames.get(id) ?? 'a teammate');
 
   return (
-    <main className="px-gutter max-w-layout mx-auto flex w-full flex-1 flex-col gap-8 py-12">
+    <main className="px-gutter max-w-layout py-page mx-auto flex w-full flex-1 flex-col gap-6">
       <div className="flex flex-col gap-1">
         <Link
           href={`/sites/${workspaceId}`}
@@ -109,7 +109,7 @@ export default async function PublishPage({ params, searchParams }: Props) {
         >
           Back to {site.name}
         </Link>
-        <h1 className="text-h1 m-0 break-words">Publish</h1>
+        <h1 className="text-title m-0 break-words">Publish</h1>
       </div>
 
       <p role="status" className="m-0 font-semibold empty:hidden">
@@ -120,7 +120,7 @@ export default async function PublishPage({ params, searchParams }: Props) {
       ) : null}
 
       <section aria-labelledby="publish-now" className="flex flex-col gap-4">
-        <h2 id="publish-now" className="text-h2 m-0">
+        <h2 id="publish-now" className="text-section m-0">
           {fixes.length ? 'Needs a fix' : 'Your draft'}
         </h2>
         {site.status === 'paused' ? (
@@ -164,11 +164,9 @@ export default async function PublishPage({ params, searchParams }: Props) {
             {mustBuy ? (
               <div
                 data-buy
-                className="border-lv-border rounded-card p-card flex flex-col gap-3 border-2"
+                className="border-lv-border rounded-box p-box flex flex-col gap-3 border-2"
               >
-                <h3 className="m-0 text-lg font-bold">
-                  Buy your page to publish it
-                </h3>
+                <h3 className="text-item m-0">Buy your page to publish it</h3>
                 <p className="m-0">
                   Building and the preview link are free. Putting your page at{' '}
                   {siteAddress(site.handle)} for everyone to see takes buying it
@@ -209,7 +207,7 @@ export default async function PublishPage({ params, searchParams }: Props) {
                     name="note"
                     maxLength={200}
                     aria-describedby="publish-note-help"
-                    className="min-h-control border-lv-border bg-lv-card text-lv-text w-full max-w-xl rounded-xl border-2 px-4 text-base"
+                    className="min-h-control border-lv-border bg-lv-card text-lv-text w-full max-w-xl rounded-xl border-2 px-3 text-base sm:text-sm"
                   />
                   <p
                     id="publish-note-help"
@@ -231,7 +229,7 @@ export default async function PublishPage({ params, searchParams }: Props) {
       </section>
 
       <section aria-labelledby="preview-link" className="flex flex-col gap-3">
-        <h2 id="preview-link" className="text-h2 m-0">
+        <h2 id="preview-link" className="text-section m-0">
           Private preview link
         </h2>
         <p className="m-0">
@@ -267,7 +265,7 @@ export default async function PublishPage({ params, searchParams }: Props) {
       </section>
 
       <section aria-labelledby="versions" className="flex flex-col gap-3">
-        <h2 id="versions" className="text-h2 m-0">
+        <h2 id="versions" className="text-section m-0">
           Versions
         </h2>
         {versions.length === 0 ? (
@@ -280,7 +278,7 @@ export default async function PublishPage({ params, searchParams }: Props) {
                 <li
                   key={version.number}
                   data-version={version.number}
-                  className="border-lv-border flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 p-4"
+                  className="border-lv-border flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 p-3"
                 >
                   <div className="flex flex-col gap-1">
                     <p className="m-0 font-semibold">

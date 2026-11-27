@@ -40,8 +40,8 @@ export default async function SitePage({ params }: Props) {
       : null;
 
   return (
-    <main className="px-gutter max-w-layout mx-auto flex w-full flex-1 flex-col gap-6 py-12">
-      <h1 className="text-h1 m-0 break-words">{site.name}</h1>
+    <main className="px-gutter max-w-layout py-page mx-auto flex w-full flex-1 flex-col gap-5">
+      <h1 className="text-title m-0 break-words">{site.name}</h1>
       {paused ? (
         <PausedNotice
           workspaceId={site.workspaceId}
@@ -52,7 +52,7 @@ export default async function SitePage({ params }: Props) {
 
       <section
         aria-labelledby="site-card"
-        className="bg-lv-card border-lv-border rounded-card p-card flex flex-col gap-4 border-2"
+        className="bg-lv-card border-lv-border rounded-box p-box flex flex-col gap-4 border-2"
       >
         <h2 id="site-card" className="sr-only">
           Your site
@@ -84,7 +84,7 @@ export default async function SitePage({ params }: Props) {
         </div>
         <div className="flex flex-col gap-2">
           <p className="m-0 font-semibold">Your link</p>
-          <p className="m-0 text-lg break-all">
+          <p className="m-0 text-base font-semibold break-all">
             {site.status === 'live' ? (
               <a
                 href={`https://${address}`}

@@ -216,7 +216,7 @@ export function PageEditor({
         className="flex w-full flex-col gap-5 lg:sticky lg:top-4 lg:max-w-md"
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 id="editor-blocks" className="text-h3 m-0">
+          <h2 id="editor-blocks" className="text-section m-0">
             Blocks
           </h2>
           <p
@@ -326,7 +326,7 @@ export function PageEditor({
                 id="add-block"
                 value={adding}
                 onChange={(e) => setAdding(e.target.value)}
-                className="min-h-control border-lv-border bg-lv-card text-lv-text w-full rounded-xl border-2 px-3 text-base"
+                className="min-h-control border-lv-border bg-lv-card text-lv-text w-full rounded-xl border-2 px-3 text-base sm:text-sm"
               >
                 {EDITOR_BLOCKS.map((type) => (
                   <option key={type} value={type}>
@@ -350,7 +350,7 @@ export function PageEditor({
             aria-labelledby="editor-settings"
             className="border-lv-border flex flex-col gap-4 border-t-2 pt-5"
           >
-            <h2 id="editor-settings" className="text-h3 m-0">
+            <h2 id="editor-settings" className="text-section m-0">
               {panel.label}
             </h2>
             <PictureUploads.Provider value={uploadPicture}>
@@ -382,7 +382,7 @@ export function PageEditor({
         className="flex min-w-0 flex-1 flex-col gap-3"
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 id="editor-preview" className="text-h3 m-0">
+          <h2 id="editor-preview" className="text-section m-0">
             Preview
           </h2>
           <div role="group" aria-label="Screen" className="flex gap-1">
@@ -404,7 +404,7 @@ export function PageEditor({
         </div>
         <div
           data-preview-screen={screen}
-          className="border-lv-border mx-auto w-full overflow-x-auto rounded-2xl border-2"
+          className="border-lv-border mx-auto w-full overflow-x-auto rounded-2xl border-2 text-base"
           style={{ maxWidth: SCREENS[screen].width }}
         >
           <PreviewMode>

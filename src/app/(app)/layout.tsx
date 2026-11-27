@@ -16,8 +16,8 @@ export default async function AppLayout({
   const user = await requireUser();
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      <header className="px-gutter border-lv-border flex h-16 items-center justify-between gap-4 border-b">
+    <div className="text-copy flex min-h-dvh flex-col">
+      <header className="px-gutter border-lv-border flex h-14 items-center justify-between gap-4 border-b">
         <div className="flex min-w-0 items-center gap-4">
           <Link
             href="/"
