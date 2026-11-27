@@ -60,6 +60,12 @@ export interface Renderer {
     url: string;
     app: string;
   }): string | Promise<string>;
+  /** levuche.page itself: what Levuche is, and where to start. */
+  intro(input: {
+    inApp: InApp;
+    url: string;
+    app: string;
+  }): string | Promise<string>;
   missing(input: {
     why: Missing;
     site: Located;
@@ -158,6 +164,23 @@ const NO_CACHE = { 'Cache-Control': 'no-store' };
 const appUrl = (env: SitesEnv) =>
   (env.APP_URL || DEFAULT_APP).replace(/\/+$/, '');
 
+/**
+ * Where Levuche's own intro lives, when this request is for it: the bare
+ * domain, www, or the dev host's root. Null for a site address.
+ */
+function introHome(url: URL, env: SitesEnv): string | null {
+  const domain = (env.SITES_DOMAIN || 'levuche.page').toLowerCase();
+  if (isApex(url, env)) return `https://${domain}/`;
+  const pathHost = env.SITES_PATH_HOST?.toLowerCase();
+  if (
+    pathHost &&
+    url.hostname.toLowerCase() === pathHost &&
+    url.pathname === '/'
+  )
+    return `https://${pathHost}/`;
+  return null;
+}
+
 /** A request that isn't for any one site, for the pages that say so. */
 const nowhere = (url: URL): Located => ({
   handle: '',
@@ -214,11 +237,32 @@ export async function serve(
     new Response(head ? null : body, { status, headers: init });
 
   const url = new URL(request.url);
-  if (isApex(url, env)) return Response.redirect('https://levuche.com/', 301);
-
   const noindex = env.SITES_NOINDEX === 'true';
   const inApp = inAppBrowser(request.headers.get('User-Agent'));
   const app = appUrl(env);
+
+  // levuche.page itself (and the dev host's root) introduces Levuche, with
+  // a way to start and a way to read more. www and any other path go to it.
+  const home = introHome(url, env);
+  if (home) {
+    if (url.pathname === '/robots.txt')
+      return answer(
+        robotsTxt(null),
+        200,
+        headers(env, 'text/plain; charset=utf-8')
+      );
+    const target = new URL(home);
+    if (url.host !== target.host || url.pathname !== '/')
+      return Response.redirect(home, 301);
+    return answer(
+      await render.intro({ inApp, url: home, app }),
+      200,
+      headers(env, 'text/html; charset=utf-8', {
+        'Cache-Control': 'public, max-age=300',
+        Vary: 'User-Agent',
+      })
+    );
+  }
   const site = locate(url, env);
   if (!site) {
     if (url.pathname === '/robots.txt')
