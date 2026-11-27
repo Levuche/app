@@ -211,8 +211,11 @@ const INTRO_POINTS: ReadonlyArray<[string, string]> = [
   ['Pay once.', '$9 per page, with no monthly fee.'],
 ];
 
-/** levuche.page itself: what Levuche is, a way to start and a way to read more. */
-function Intro({ app }: { app: string }) {
+/**
+ * What Levuche is, a way to start and a way to read more: levuche.page
+ * itself, and (with `free`) an address nobody has yet, which it offers.
+ */
+function Intro({ app, free }: { app: string; free?: string }) {
   const button =
     'inline-flex min-h-12 items-center justify-center rounded-full border-2 px-6 font-semibold no-underline';
   return (
@@ -220,11 +223,26 @@ function Intro({ app }: { app: string }) {
       <a href={WEBSITE} className="text-logo text-lv-brand no-underline">
         levuche
       </a>
-      <h1 className="text-h1 m-0">Your link in bio, now a shop.</h1>
-      <p className="text-lead text-lv-text-2 m-0">
-        Levuche turns your Instagram link into a small website that sells your
-        packs, prompts and guides.
-      </p>
+      {free ? (
+        <>
+          <h1 className="text-h1 m-0 break-words">
+            {free}.levuche.page is free
+          </h1>
+          <p className="text-lead text-lv-text-2 m-0">
+            Nobody has this address yet. It could be yours: Levuche turns your
+            Instagram link into a small website that sells your packs, prompts
+            and guides.
+          </p>
+        </>
+      ) : (
+        <>
+          <h1 className="text-h1 m-0">Your link in bio, now a shop.</h1>
+          <p className="text-lead text-lv-text-2 m-0">
+            Levuche turns your Instagram link into a small website that sells
+            your packs, prompts and guides.
+          </p>
+        </>
+      )}
       <ul className="m-0 flex list-none flex-col gap-3 p-0">
         {INTRO_POINTS.map(([lead, rest]) => (
           <li key={lead} className="flex gap-3">
@@ -240,10 +258,14 @@ function Intro({ app }: { app: string }) {
       </ul>
       <div className="flex flex-wrap gap-3 pt-2">
         <a
-          href={`${app}/new`}
+          href={
+            free
+              ? `${app}/new?handle=${encodeURIComponent(free)}`
+              : `${app}/new`
+          }
           className={`${button} bg-lv-primary text-lv-on-primary border-transparent`}
         >
-          Get started
+          {free ? 'Make it yours' : 'Get started'}
         </a>
         <a
           href={WEBSITE}
@@ -320,15 +342,18 @@ export const render: Renderer = {
       title: MISSING[why].title,
       url: here,
       inApp,
-      children: (
-        <Missing
-          why={why}
-          handle={site.handle}
-          base={site.base}
-          url={why === 'error' ? url : here}
-          app={app}
-        />
-      ),
+      children:
+        why === 'free' ? (
+          <Intro app={app} free={site.handle} />
+        ) : (
+          <Missing
+            why={why}
+            handle={site.handle}
+            base={site.base}
+            url={why === 'error' ? url : here}
+            app={app}
+          />
+        ),
     });
   },
 };

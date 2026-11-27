@@ -119,8 +119,9 @@ by the app. It reads the app's database and never writes to it.
   frame as the editor's preview, as static HTML with the stylesheet inlined
   (`sites/src/site.css`, built by `npm run sites:css`). No scripts run, so
   "Back to top" isn't on live sites.
-- **States.** A handle nobody has says it's free and links to make a site,
-  with the name filled in. A name kept for Levuche, or an address no handle
+- **States.** A handle nobody has says it's free, with the same intro as
+  `levuche.page` and Make it yours, which opens the app with the name
+  filled in. A name kept for Levuche, or an address no handle
   could have (too short, two levels deep), says there's no page there. A
   site never published says it isn't live yet; one taken offline or paused
   says it isn't available; a deleted one answers 410. None of these are
