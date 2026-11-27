@@ -1,12 +1,14 @@
 'use client';
 
 import { ApiVersion } from '@buildbase/sdk';
-import { SaaSOSProvider } from '@buildbase/sdk/react';
+import { CookieBanner, SaaSOSProvider } from '@buildbase/sdk/react';
 import { captureReferral } from '@buildbase/sdk/tracking';
 import { buildbaseEnvironmentId } from '@levuche/kit';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { useConsentCategories } from '@/hooks/use-consent-categories';
 import { buildbase, isAuthConfigured } from '@/lib/buildbase-config';
+import { site } from '@/lib/site';
 
 const json = { 'Content-Type': 'application/json' };
 
@@ -61,6 +63,14 @@ export function BuildbaseProvider({ children }: { children: React.ReactNode }) {
       orgId={buildbase.orgId}
       environment={buildbase.environment}
       ui={ui}
+      // Loads the tags attached to the app's sign-in client in the Buildbase
+      // console (Settings > Tracking & tags): GA4, Google Ads, the Meta,
+      // LinkedIn, X and TikTok pixels and the rest. Google tags start with
+      // cookies off; every other tag waits for the visitor's yes in the
+      // cookie banner. With nothing attached, nothing loads. Production has
+      // its own sign-in client, so a tag attached there only loads on
+      // app.levuche.com.
+      tracking={{}}
       // The app shows its own state (the button reads "Signing in…"), so
       // Buildbase's full-screen "Redirecting..." cover stays off.
       fullScreenLoader={false}
@@ -92,6 +102,24 @@ export function BuildbaseProvider({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
+      <ConsentBanner />
     </SaaSOSProvider>
+  );
+}
+
+/**
+ * Asks visitors first whenever a tag attached in the console needs their
+ * consent. It shows once and remembers the answer in the bb_consent cookie;
+ * "Cookie settings" in the account menu opens it again. It asks only about
+ * the kinds of tag really on the page.
+ */
+function ConsentBanner() {
+  const categories = useConsentCategories();
+  if (categories.length === 0) return null;
+  return (
+    <CookieBanner
+      privacyHref={`${site.websiteUrl}/privacy`}
+      categories={categories}
+    />
   );
 }

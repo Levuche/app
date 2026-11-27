@@ -78,8 +78,10 @@ sites answer in production:
 
 `next.config.ts` sends a Content-Security-Policy with every response,
 allowing only the app's own origin, the Buildbase API, Stripe's card fields
-(Buildbase's billing screens), YouTube's privacy-mode player and Cloudflare
-Web Analytics (the beacon Cloudflare adds to the page). It is
+(Buildbase's billing screens), YouTube's privacy-mode player, Cloudflare
+Web Analytics (the beacon Cloudflare adds to the page) and the hosts of the
+tags attached in Buildbase's Tracking & tags (GA4, Tag Manager, Google Ads
+and the other providers the SDK supports). It is
 enforced only on app.levuche.com; app-dev, previews and `npm run dev` send
 it as report-only. Browsers report what it blocks, or would block, to
 `/api/csp-report`, which writes one `csp-violation` line per report to the
@@ -112,3 +114,14 @@ npx wrangler secret put STAFF_USER_IDS
 
 **Actions** > **Deploy to Cloudflare** > **Run workflow**, then pick `dev` or
 `main`.
+
+## Google Analytics and other tags
+
+The app loads tags through Buildbase's Tracking & tags, like levuche.com,
+so no tag id lives in the repo. In the production Buildbase console,
+Settings > Tracking & tags, attach the GA4 Measurement ID (G-...) to the
+"Levuche app" sign-in client. Production has its own client, so the tag
+loads only on app.levuche.com; app-dev uses the dev client and stays
+untracked unless a tag is attached there too. The cookie banner asks before
+anything sets a cookie (Google tags start in Consent Mode with cookies off),
+and "Cookie settings" in the account menu opens it again.
