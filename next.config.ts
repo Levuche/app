@@ -1,5 +1,6 @@
 import type { NextConfig } from 'next';
 import { initOpenNextCloudflareForDev } from '@opennextjs/cloudflare';
+import { TAG_SCRIPT_ORIGINS } from '@buildbase/sdk/tracking';
 
 /** Only app.levuche.com enforces the policy; app-dev and previews report. */
 const isProductionApp =
@@ -32,6 +33,25 @@ const cloudflareAnalytics = {
 };
 
 /**
+ * The hosts the tags from Buildbase's Tracking & tags load from and report
+ * to, the same list as levuche.com's. The script hosts come from the SDK, so
+ * they follow the providers it supports. The others are the hosts Buildbase
+ * measured for Google (GA4, Tag Manager, Google Ads); any other pixel's
+ * reporting host shows as refused on app-dev, where the policy is
+ * report-only, and gets added here.
+ */
+const tagScriptHosts = [
+  ...TAG_SCRIPT_ORIGINS,
+  'https://googleads.g.doubleclick.net',
+];
+const tagConnectHosts = [
+  'https://ad.doubleclick.net',
+  'https://*.google-analytics.com',
+  'https://*.analytics.google.com',
+  'https://www.google.com',
+];
+
+/**
  * The Content-Security-Policy: only the hosts the app needs. Next.js and
  * next-themes put small scripts and styles inline, and Buildbase's screens
  * style themselves inline, so those stay allowed. Creators' pictures and
@@ -41,11 +61,11 @@ const cloudflareAnalytics = {
  */
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' ${stripe.script} ${cloudflareAnalytics.script}`,
+  `script-src 'self' 'unsafe-inline' ${stripe.script} ${cloudflareAnalytics.script} ${tagScriptHosts.join(' ')}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  `connect-src 'self' ${buildbaseApi} ${stripe.connect} ${cloudflareAnalytics.connect}`,
+  `connect-src 'self' ${buildbaseApi} ${stripe.connect} ${cloudflareAnalytics.connect} ${tagConnectHosts.join(' ')}`,
   `frame-src 'self' https://www.youtube-nocookie.com ${stripe.frame}`,
   "object-src 'none'",
   "base-uri 'self'",

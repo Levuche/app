@@ -1,8 +1,9 @@
 'use client';
 
-import { useSaaSAuth } from '@buildbase/sdk/react';
+import { openCookieBanner, useSaaSAuth } from '@buildbase/sdk/react';
 import { useRouter } from 'next/navigation';
 import { useId } from 'react';
+import { useConsentCategories } from '@/hooks/use-consent-categories';
 import { buttonClasses } from '@/lib/button';
 
 const item = buttonClasses('quiet', 'w-full justify-start');
@@ -16,6 +17,8 @@ export function AccountMenu({ name, email }: { name: string; email: string }) {
   const { openWorkspaceSettings, signOut } = useSaaSAuth();
   const router = useRouter();
   const id = useId();
+  // Only while a tag attached in the console needs consent.
+  const hasCookieChoices = useConsentCategories().length > 0;
   // Every item closes the menu as it acts.
   const closes = { popoverTarget: id, popoverTargetAction: 'hide' } as const;
 
@@ -52,6 +55,16 @@ export function AccountMenu({ name, email }: { name: string; email: string }) {
         >
           Security and devices
         </button>
+        {hasCookieChoices && (
+          <button
+            type="button"
+            {...closes}
+            className={item}
+            onClick={() => openCookieBanner()}
+          >
+            Cookie settings
+          </button>
+        )}
         <button
           type="button"
           {...closes}
