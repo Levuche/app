@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { BILLING_MANAGE } from '@/lib/billing';
+import { BILLING_MANAGE, checkoutRefusal, refusalTag } from '@/lib/billing';
 import { bb, requireUser } from '@/lib/buildbase';
 import { siteStore } from '@/lib/db';
 import { sweepFiles } from '@/lib/files';
@@ -99,6 +99,7 @@ export async function buySite(form: FormData) {
   if (!offer?.purchasable) done(workspaceId, 'not-for-sale');
 
   let next: string;
+  let why: string | null = null;
   try {
     const answer = await bb.addOns.purchase(workspaceId, {
       offerSlug: offer.slug,
@@ -114,9 +115,26 @@ export async function buySite(form: FormData) {
           ? (answer.invoice.hosted_invoice_url ?? '')
           : backTo(workspaceId, 'paid');
   } catch (error) {
-    console.error('Buildbase did not start the checkout', error);
+    // Buildbase's own words, status and code, so the log says why it said
+    // no (the error alone logged only its stack).
+    const refusal = checkoutRefusal(error);
+    console.error(
+      'Buildbase did not start the checkout',
+      JSON.stringify({ workspaceId, offer: offer.slug, ...refusal })
+    );
+    why = refusalTag(refusal);
     next = '';
   }
-  if (!/^https?:\/\//.test(next)) done(workspaceId, 'not-bought');
+  if (!/^https?:\/\//.test(next)) {
+    if (!why)
+      console.error(
+        'Buildbase started the checkout with no address to open',
+        JSON.stringify({ workspaceId, offer: offer.slug })
+      );
+    done(
+      workspaceId,
+      why ? `not-bought&why=${encodeURIComponent(why)}` : 'not-bought'
+    );
+  }
   redirect(next);
 }

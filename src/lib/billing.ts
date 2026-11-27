@@ -73,3 +73,69 @@ export function priceWords(
     return `${price} ${INTERVALS[offer.price.interval] ?? `each ${offer.price.interval}`}`;
   return price;
 }
+
+/**
+ * What Buildbase said when it refused to start a checkout, from the error
+ * the SDK throws (a plain Error with Buildbase's `message`, plus the HTTP
+ * `status` and, for most refusals, a machine-readable `code`). For the log.
+ */
+export function checkoutRefusal(error: unknown) {
+  const e = (error ?? {}) as {
+    status?: unknown;
+    code?: unknown;
+    message?: unknown;
+    reason?: unknown;
+  };
+  return {
+    status: typeof e.status === 'number' ? e.status : null,
+    code: typeof e.code === 'string' ? e.code : null,
+    reason: typeof e.reason === 'string' ? e.reason : null,
+    message:
+      typeof e.message === 'string' ? e.message : String(error ?? 'unknown'),
+  };
+}
+
+/**
+ * A short, safe tag for the refusal to carry in the page address (?why=):
+ * Buildbase's code, else the HTTP status. Never its message, so a link
+ * can't make the page say anything.
+ */
+export function refusalTag(refusal: {
+  status: number | null;
+  code: string | null;
+}) {
+  if (refusal.code && /^[A-Z][A-Z0-9_]{0,59}$/.test(refusal.code))
+    return refusal.code;
+  if (refusal.status && refusal.status >= 100 && refusal.status <= 599)
+    return String(refusal.status);
+  return null;
+}
+
+const REFUSALS: Record<string, string> = {
+  STRIPE_NOT_CONNECTED: 'Payments aren’t set up for Levuche yet.',
+  TAX_SETTING_UNAVAILABLE:
+    'The payment service couldn’t be reached just now. Try again in a minute.',
+  STRIPE_CATALOG_SYNCING:
+    'The price is still being set up. Try again in a minute.',
+  IDEMPOTENCY_KEY_REUSED: 'That checkout was already used. Reload the page.',
+  SUBSCRIPTION_CURRENCY_MISMATCH:
+    'This page is billed in another currency than the price.',
+  RETURN_URL_REQUIRED: 'The checkout has nowhere to send you back to.',
+};
+
+/**
+ * The line the Publish page shows when the checkout didn't open (?done=
+ * not-bought), with Buildbase's reason when the address carries one.
+ */
+export function whyNoCheckout(tag: string | undefined) {
+  const base = 'The checkout didn’t open.';
+  const safe = tag && /^([A-Z][A-Z0-9_]{0,59}|\d{3})$/.test(tag) ? tag : null;
+  if (!safe) return `${base} Reload the page and try again.`;
+  const known = REFUSALS[safe];
+  const said = /^\d{3}$/.test(safe)
+    ? `Buildbase answered with error ${safe}`
+    : `Buildbase said ${safe}`;
+  return known
+    ? `${base} ${known} (${said}.)`
+    : `${base} ${said}. Reload the page and try again, and if it happens again, send us that code.`;
+}
