@@ -1,6 +1,13 @@
 'use client';
 
-import { PreviewMode } from '@levuche/ui';
+import {
+  BlockFrame,
+  EditMode,
+  PreviewMode,
+  type BlockDropPlace,
+  type EditChange,
+  type EditPick,
+} from '@levuche/ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CreatorPage } from '@/components/creator-page';
 import { pageBlocks } from '@/components/page-blocks';
@@ -12,6 +19,7 @@ import {
 import { blockPanel, EDITOR_BLOCKS } from '@/lib/blocks';
 import { buttonClasses } from '@/lib/button';
 import type { Block } from '@/lib/db';
+import { pathsUp, readAt, setAt } from '@/lib/edit-paths';
 import type { PageFrame } from '@/lib/page-layout';
 import { pictureSide } from '@/lib/pictures';
 import { NotAPicture, shrinkPicture } from '@/lib/shrink-picture';
@@ -76,6 +84,12 @@ const SCREENS = {
 } as const;
 type Screen = keyof typeof SCREENS;
 
+/**
+ * The frame's own words, apart from "Add a block below": the panel's menu is
+ * already "Add a block", and the two would read alike.
+ */
+const FRAME_LABELS = { add: 'Insert a block below' };
+
 type SaveState =
   { kind: 'saved' } | { kind: 'saving' } | { kind: 'error'; message: string };
 
@@ -112,6 +126,17 @@ export function PageEditor({
   const [save, setSave] = useState<SaveState>({ kind: 'saved' });
   const [adding, setAdding] = useState<string>(EDITOR_BLOCKS[0]);
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
+  /** The block asking "Remove it?" on the page, from its frame. */
+  const [deleting, setDeleting] = useState<string | null>(null);
+  /** The block whose "Add a block below" menu is open on the page. */
+  const [addingAfter, setAddingAfter] = useState<string | null>(null);
+  /**
+   * A setting picked on the page, to bring the settings panel to ('' for
+   * the panel itself), and a count that asks for it once it's drawn.
+   */
+  const showSetting = useRef<string | null>(null);
+  const [asked, setAsked] = useState(0);
+  const settingsRef = useRef<HTMLElement>(null);
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const pending = useRef(0);
 
@@ -164,29 +189,115 @@ export function PageEditor({
     );
   };
 
-  const add = async () => {
-    const block = await run(addBlock(workspaceId, pageId, adding));
-    if (block) {
-      setBlocks((all) => [...all, block]);
-      setSelected(block.id);
-    }
+  /**
+   * Adds a block of `type`, with `props` when it's a copy, at the end of the
+   * page or right after the block `after`.
+   */
+  const addAt = async (
+    type: string,
+    after?: string,
+    props?: Record<string, unknown>
+  ) => {
+    const block = await run(addBlock(workspaceId, pageId, type));
+    if (!block) return;
+    const made = props ? { ...block, props } : block;
+    const at = after ? blocks.findIndex((b) => b.id === after) + 1 : -1;
+    setBlocks((all) => {
+      if (at <= 0) return [...all, made];
+      const next = [...all];
+      next.splice(at, 0, made);
+      return next;
+    });
+    setSelected(block.id);
+    if (props) await run(saveBlock(workspaceId, block.id, type, props));
+    if (at > 0) await run(moveBlock(workspaceId, block.id, at));
   };
 
-  const move = (id: string, by: -1 | 1) => {
+  const add = () => addAt(adding);
+
+  /** Puts block `id` at `to` in the page's reading order, and saves it. */
+  const place = (id: string, to: number) => {
     const from = blocks.findIndex((b) => b.id === id);
-    const to = from + by;
-    if (from < 0 || to < 0 || to >= blocks.length) return;
-    const next = [...blocks];
-    [next[from], next[to]] = [next[to], next[from]];
+    if (from < 0 || to < 0 || to >= blocks.length || to === from) return;
+    const next = blocks.filter((b) => b.id !== id);
+    next.splice(to, 0, blocks[from]);
     setBlocks(next);
     void run(moveBlock(workspaceId, id, to));
   };
+
+  const move = (id: string, by: -1 | 1) =>
+    place(id, blocks.findIndex((b) => b.id === id) + by);
+
+  /** Block `from`, dragged onto `onto`, goes before or after it. */
+  const drop = (from: string, onto: string, where: BlockDropPlace) => {
+    const others = blocks.filter((b) => b.id !== from);
+    const at = others.findIndex((b) => b.id === onto);
+    if (at < 0) return;
+    place(from, where === 'after' ? at + 1 : at);
+  };
+
+  /** A copy of `block`, with what it says now, right after it. */
+  const duplicate = (block: Block) => {
+    const waiting = timers.current.get(block.id);
+    if (waiting) {
+      // Save the original first, so the two don't differ.
+      clearTimeout(waiting);
+      timers.current.delete(block.id);
+      void run(saveBlock(workspaceId, block.id, block.type, block.props));
+    }
+    void addAt(block.type, block.id, block.props);
+  };
+
+  /** Words typed on the page itself, saved like any other change. */
+  const edited = ({ block: id, path, value }: EditChange) => {
+    const block = blocks.find((b) => b.id === id);
+    if (block) change(block, setAt(block.props, path, value));
+  };
+
+  /** A link, picture or other part picked on the page: open its field. */
+  const picked = ({ block: id, path }: EditPick) => {
+    setSelected(id);
+    showSetting.current = path;
+    setAsked((n) => n + 1);
+  };
+
+  const showSettings = (id: string) => {
+    setSelected(id);
+    showSetting.current = '';
+    setAsked((n) => n + 1);
+  };
+
+  // Once the picked block's panel is drawn, bring its field into view and
+  // give it the keyboard: the nearest field the setting has, or the panel.
+  useEffect(() => {
+    const path = showSetting.current;
+    showSetting.current = null;
+    const panel = settingsRef.current;
+    if (path === null || !panel) return;
+    const field = path
+      ? pathsUp(path)
+          .map((path) =>
+            panel.querySelector<HTMLElement>(
+              `[data-setting="${CSS.escape(path)}"]`
+            )
+          )
+          .find(Boolean)
+      : null;
+    const control = field?.querySelector<HTMLElement>(
+      'input:not([type="file"]), textarea, select, button'
+    );
+    const target = control ?? panel.querySelector<HTMLElement>('h2');
+    target?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    target?.focus({ preventScroll: true });
+  }, [asked]);
 
   const remove = async (id: string) => {
     const waiting = timers.current.get(id);
     if (waiting) clearTimeout(waiting);
     timers.current.delete(id);
     setConfirmRemove(null);
+    setDeleting(null);
+    setAddingAfter((current) => (current === id ? null : current));
     if (await run(removeBlock(workspaceId, id))) {
       setBlocks((all) => all.filter((b) => b.id !== id));
       setSelected((current) => (current === id ? null : current));
@@ -196,7 +307,7 @@ export function PageEditor({
   const current = blocks.find((b) => b.id === selected);
   const panel = current && blockPanel(current.type);
 
-  const preview = pageBlocks(blocks, ({ id, missing }) => (
+  const drawn = pageBlocks(blocks, ({ id, missing }) => (
     <button
       type="button"
       onClick={() => setSelected(id)}
@@ -208,6 +319,97 @@ export function PageEditor({
       Add {missing.join(' and ').toLowerCase()} to show this block.
     </button>
   ));
+
+  // Each block in the frame that gives it its buttons on the page. The
+  // blocks themselves have none: the frame only reports what was pressed,
+  // and the functions above change the page and save it.
+  const preview = drawn.map((shown) => {
+    const i = blocks.findIndex((b) => b.id === shown.id);
+    const block = blocks[i];
+    const name = blockPanel(block.type)?.label ?? block.type;
+    return {
+      ...shown,
+      children: (
+        <BlockFrame
+          id={block.id}
+          label={name}
+          selected={block.id === selected}
+          first={i === 0}
+          last={i === blocks.length - 1}
+          onSelect={setSelected}
+          labels={FRAME_LABELS}
+          {...(readOnly
+            ? {}
+            : {
+                onMove: (by: -1 | 1) => move(block.id, by),
+                onDrop: (from: string, where: BlockDropPlace) =>
+                  drop(from, block.id, where),
+                onDuplicate: () => duplicate(block),
+                onSettings: () => showSettings(block.id),
+                onDelete: () => setDeleting(block.id),
+                onAdd: () =>
+                  setAddingAfter((open) =>
+                    open === block.id ? null : block.id
+                  ),
+              })}
+        >
+          {shown.children}
+          {!readOnly && deleting === block.id ? (
+            <div
+              role="group"
+              aria-label={`Remove ${name}?`}
+              className="border-lv-border bg-lv-card text-lv-text mt-3 flex flex-wrap items-center gap-2 rounded-xl border-2 p-3 font-sans text-sm"
+            >
+              <span className="flex-1 font-semibold">Remove {name}?</span>
+              <button
+                type="button"
+                className={buttonClasses('outline', 'px-3')}
+                onClick={() => remove(block.id)}
+              >
+                Remove
+              </button>
+              <button
+                type="button"
+                className={buttonClasses('quiet', 'px-3')}
+                onClick={() => setDeleting(null)}
+              >
+                Keep
+              </button>
+            </div>
+          ) : null}
+          {!readOnly && addingAfter === block.id ? (
+            <div
+              role="group"
+              aria-label={`Blocks to insert after ${name}`}
+              className="border-lv-border bg-lv-card text-lv-text mt-6 flex flex-wrap items-center gap-2 rounded-xl border-2 p-3 font-sans text-sm"
+            >
+              <span className="w-full font-semibold">Insert a block here</span>
+              {EDITOR_BLOCKS.map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  className={buttonClasses('outline', 'px-3')}
+                  onClick={() => {
+                    setAddingAfter(null);
+                    void addAt(type, block.id);
+                  }}
+                >
+                  {blockPanel(type)?.label}
+                </button>
+              ))}
+              <button
+                type="button"
+                className={buttonClasses('quiet', 'px-3')}
+                onClick={() => setAddingAfter(null)}
+              >
+                Cancel
+              </button>
+            </div>
+          ) : null}
+        </BlockFrame>
+      ),
+    };
+  });
 
   return (
     <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
@@ -347,10 +549,11 @@ export function PageEditor({
 
         {current && panel ? (
           <section
+            ref={settingsRef}
             aria-labelledby="editor-settings"
             className="border-lv-border flex flex-col gap-4 border-t-2 pt-5"
           >
-            <h2 id="editor-settings" className="text-section m-0">
+            <h2 id="editor-settings" tabIndex={-1} className="text-section m-0">
               {panel.label}
             </h2>
             <PictureUploads.Provider value={uploadPicture}>
@@ -407,9 +610,27 @@ export function PageEditor({
           className="border-lv-border mx-auto w-full overflow-x-auto rounded-2xl border-2 text-base"
           style={{ maxWidth: SCREENS[screen].width }}
         >
-          <PreviewMode>
-            <CreatorPage blocks={preview} frame={frame} preview />
-          </PreviewMode>
+          {readOnly ? (
+            <PreviewMode>
+              <CreatorPage blocks={preview} frame={frame} preview />
+            </PreviewMode>
+          ) : (
+            // Words are typed on the page itself; a link, picture or other
+            // setting picked there opens its field in the panel.
+            <EditMode
+              onEdit={edited}
+              onPick={picked}
+              readValue={({ block: id, path }) => {
+                const value = readAt(
+                  blocks.find((b) => b.id === id)?.props ?? {},
+                  path
+                );
+                return typeof value === 'string' ? value : undefined;
+              }}
+            >
+              <CreatorPage blocks={preview} frame={frame} preview />
+            </EditMode>
+          )}
         </div>
       </section>
     </div>

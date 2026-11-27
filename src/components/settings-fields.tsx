@@ -33,6 +33,7 @@ export function SettingsFields({
   onChange,
   disabled,
   unsetLabel,
+  path = '',
 }: {
   fields: readonly SettingField[];
   values: Values;
@@ -40,23 +41,33 @@ export function SettingsFields({
   disabled?: boolean;
   /** The empty choice of a field with no default, as "As the block has it". */
   unsetLabel?: string;
+  /** Where these fields sit in the block's settings, as "links.0.". */
+  path?: string;
 }) {
   return (
     <div className="flex flex-col gap-4">
       {fields.map((field) => (
-        <SettingControl
+        // Names the field by its path ("links.0.label"), so a click on that
+        // part of the page can bring the editor to it.
+        <div
           key={field.name}
-          field={field}
-          value={values[field.name]}
-          disabled={disabled}
-          unsetLabel={unsetLabel}
-          onChange={(value) => {
-            const next = { ...values };
-            if (value === undefined) delete next[field.name];
-            else next[field.name] = value;
-            onChange(next);
-          }}
-        />
+          data-setting={path + field.name}
+          className="contents"
+        >
+          <SettingControl
+            field={field}
+            value={values[field.name]}
+            disabled={disabled}
+            unsetLabel={unsetLabel}
+            path={path + field.name}
+            onChange={(value) => {
+              const next = { ...values };
+              if (value === undefined) delete next[field.name];
+              else next[field.name] = value;
+              onChange(next);
+            }}
+          />
+        </div>
       ))}
     </div>
   );
@@ -90,12 +101,15 @@ function SettingControl({
   onChange,
   disabled,
   unsetLabel = 'Not set',
+  path,
 }: {
   field: SettingField;
   value: unknown;
   onChange: (value: unknown) => void;
   disabled?: boolean;
   unsetLabel?: string;
+  /** The field's own path in the block's settings. */
+  path: string;
 }) {
   const id = useId();
   const upload = useContext(PictureUploads);
@@ -311,6 +325,7 @@ function SettingControl({
                 : {}
             }
             disabled={disabled}
+            path={`${path}.`}
             onChange={(next) =>
               onChange(Object.keys(next).length ? next : undefined)
             }
@@ -379,23 +394,27 @@ function SettingControl({
                         : {}
                     }
                     disabled={disabled}
+                    path={`${path}.${i}.`}
                     onChange={(next) =>
                       set(items.map((old, j) => (j === i ? next : old)))
                     }
                   />
                 ) : (
-                  <SettingControl
-                    field={{
-                      name: String(i),
-                      label: `${itemLabel} ${i + 1}`,
-                      type: field.of ?? 'text',
-                    }}
-                    value={item}
-                    disabled={disabled}
-                    onChange={(next) =>
-                      set(items.map((old, j) => (j === i ? next : old)))
-                    }
-                  />
+                  <div data-setting={`${path}.${i}`} className="contents">
+                    <SettingControl
+                      field={{
+                        name: String(i),
+                        label: `${itemLabel} ${i + 1}`,
+                        type: field.of ?? 'text',
+                      }}
+                      value={item}
+                      disabled={disabled}
+                      path={`${path}.${i}`}
+                      onChange={(next) =>
+                        set(items.map((old, j) => (j === i ? next : old)))
+                      }
+                    />
+                  </div>
                 )}
               </li>
             ))}

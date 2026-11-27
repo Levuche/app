@@ -125,6 +125,100 @@ test('blocks are added, moved and removed', async ({ page }) => {
   ]);
 });
 
+test('blocks are typed on, moved, added, removed and copied on the page itself', async ({
+  page,
+}) => {
+  await signInAs(page, newCreator());
+  const id = await makeSite(page, 'On the page');
+  await page.goto(`/sites/${id}/edit`);
+  const preview = page.locator('[data-preview-screen]');
+  // Each block in the preview is in a frame named for it, with its buttons.
+  const frame = (name: string) =>
+    preview.getByRole('group', { name, exact: true });
+
+  // The name is typed where it shows, and saves as the panel does.
+  await preview.locator('[data-edit="name"]').click();
+  const box = preview.getByRole('textbox');
+  await box.fill('Riya’s bakery');
+  await box.press('Enter');
+  await expect(page.getByLabel(/^Name \(needed\)$/)).toHaveValue(
+    'Riya’s bakery'
+  );
+  await saved(page);
+
+  // Moved with the frame's own button.
+  await frame('Social icons').focus();
+  await frame('Social icons')
+    .getByRole('button', { name: 'Move down' })
+    .click();
+  await saved(page);
+  expect(await blockList(page)).toEqual([
+    'creator-header',
+    'link-list',
+    'social-icons',
+  ]);
+
+  // A block put right under the profile, from the frame's menu.
+  await frame('Profile').focus();
+  await frame('Profile')
+    .getByRole('button', { name: 'Insert a block below' })
+    .click();
+  await preview
+    .getByRole('group', { name: 'Blocks to insert after Profile' })
+    .getByRole('button', { name: 'Text', exact: true })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Text', level: 2 })
+  ).toBeVisible();
+  await saved(page);
+  expect(await blockList(page)).toEqual([
+    'creator-header',
+    'text-block',
+    'link-list',
+    'social-icons',
+  ]);
+
+  // Removed from the page, after asking.
+  await frame('Social icons').focus();
+  await frame('Social icons').getByRole('button', { name: 'Delete' }).click();
+  await preview
+    .getByRole('group', { name: 'Remove Social icons?' })
+    .getByRole('button', { name: 'Remove', exact: true })
+    .click();
+  await saved(page);
+
+  // Copied, right after itself.
+  await frame('Links').focus();
+  await frame('Links').getByRole('button', { name: 'Duplicate' }).click();
+  await saved(page);
+  expect(await blockList(page)).toEqual([
+    'creator-header',
+    'text-block',
+    'link-list',
+    'link-list',
+  ]);
+
+  // The Settings button brings the panel to the block.
+  await frame('Text').focus();
+  await frame('Text').getByRole('button', { name: 'Settings' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Text', level: 2 })
+  ).toBeFocused();
+  await expectNoA11yViolations(page);
+
+  // All of it was saved.
+  await page.reload();
+  expect(await blockList(page)).toEqual([
+    'creator-header',
+    'text-block',
+    'link-list',
+    'link-list',
+  ]);
+  await expect(
+    page.locator('[data-preview-screen] [data-block="creator-header"]')
+  ).toContainText('Riya’s bakery');
+});
+
 test('a viewer sees the page but cannot change it', async ({
   page,
   request,
@@ -147,6 +241,10 @@ test('a viewer sees the page but cannot change it', async ({
     'You can look, but not change this page.'
   );
   await expect(page.getByLabel('Add a block')).toHaveCount(0);
+  await expect(
+    page.locator('[data-preview-screen] [data-block-frame-bar] button')
+  ).toHaveCount(0);
+  await expect(page.locator('[data-edit-mode]')).toHaveCount(0);
   await expect(page.getByLabel(/^Name \(needed\)$/)).toBeDisabled();
 });
 
