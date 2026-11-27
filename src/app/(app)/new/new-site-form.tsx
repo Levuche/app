@@ -45,13 +45,14 @@ const field =
   'min-h-control border-lv-border bg-lv-card text-lv-text w-full rounded-xl border-2 px-3 text-base focus-visible:border-lv-primary sm:text-sm';
 
 /**
- * The site's name and address. Works before the page's script loads, and
- * keeps what was typed when the server sends it back with a problem.
+ * The site's name and address, starting from `handle` when the visitor came
+ * from a free address. Works before the page's script loads, and keeps what
+ * was typed when the server sends it back with a problem.
  */
-export function NewSiteForm() {
+export function NewSiteForm({ handle: asked = '' }: { handle?: string }) {
   const [state, action, pending] = useActionState(createSite, {
     name: '',
-    handle: '',
+    handle: asked,
   });
   const id = useId();
   const handleInput = useRef<HTMLInputElement>(null);

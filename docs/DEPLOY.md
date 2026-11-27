@@ -65,12 +65,14 @@ asks for sign-in.
 
 The sites Worker (`sites/`, [SITES.md](SITES.md)) deploys with the app:
 `levuche-sites-dev` on `sites-dev.levuche.com` from `dev`, and
-`levuche-sites` on the route `*.levuche.page/*` from `main`. Before live
-sites answer in production:
+`levuche-sites` on the routes `*.levuche.page/*` and `levuche.page/*` from
+`main`. Before live sites answer in production:
 
 1. The `levuche.page` zone is in the Levuche Cloudflare account. Add a
    proxied wildcard record, `*` AAAA `100::`, so every handle reaches the
-   Worker. Universal SSL covers `*.levuche.page`.
+   Worker, and a proxied record for the bare domain, `@` AAAA `100::`, so
+   `levuche.page` itself reaches it and is sent on to levuche.com (without
+   it the bare domain doesn't load at all). Universal SSL covers both.
 2. The API token also needs, on the `levuche.page` zone, Workers Routes:
    Edit and Zone: Read.
 

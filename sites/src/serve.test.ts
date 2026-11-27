@@ -12,7 +12,7 @@ import { getPlatformProxy } from 'wrangler';
 import { siteStore } from '../../src/lib/db.ts';
 import { starterBlocks } from '../../src/lib/starter.ts';
 import { locate } from './locate.ts';
-import { type Renderer, serve, type SitesEnv } from './serve.ts';
+import { failed, type Renderer, serve, type SitesEnv } from './serve.ts';
 import { androidOpenUrl, inAppBrowser, sitemapXml } from './visitor.ts';
 
 const dir = mkdtempSync(join(tmpdir(), 'levuche-sites-'));
@@ -180,6 +180,8 @@ test('a site that isn’t live says why, and is never indexed', async () => {
   for (const [handle, why, status] of [
     ['nobody-yet', 'free', 404],
     ['kept-back', 'none', 404],
+    // Kept for Levuche in code, with no row: not free to claim.
+    ['test', 'none', 404],
     ['not-yet', 'not-live', 404],
     ['gone-quiet', 'offline', 404],
     ['on-hold', 'paused', 404],
@@ -195,6 +197,52 @@ test('a site that isn’t live says why, and is never indexed', async () => {
     ).text();
     assert.match(robots, /Disallow: \//, handle);
   }
+});
+
+test('an address no handle could have gets a page, not bare text', async () => {
+  for (const address of [
+    'https://sa.levuche.page/',
+    'https://a.b.levuche.page/shop',
+  ]) {
+    const response = await get(address);
+    assert.equal(response.status, 404, address);
+    assert.equal(await response.text(), 'missing none', address);
+    assert.equal(
+      response.headers.get('Content-Type'),
+      'text/html; charset=utf-8'
+    );
+    assert.equal(response.headers.get('X-Robots-Tag'), 'noindex, nofollow');
+  }
+});
+
+test('when answering fails, the visitor gets the error page', async () => {
+  const response = await failed(
+    new Request('https://sam.levuche.page/shop'),
+    env,
+    renderer
+  );
+  assert.equal(response.status, 500);
+  assert.equal(await response.text(), 'missing error');
+  assert.equal(response.headers.get('Cache-Control'), 'no-store');
+  assert.match(
+    response.headers.get('Content-Security-Policy') ?? '',
+    /default-src 'none'/
+  );
+
+  // And plain text if even that page can't be drawn.
+  const broken: Renderer = {
+    page: () => '',
+    missing: () => {
+      throw new Error('no');
+    },
+  };
+  const plain = await failed(
+    new Request('https://sam.levuche.page/'),
+    env,
+    broken
+  );
+  assert.equal(plain.status, 500);
+  assert.match(await plain.text(), /Something went wrong/);
 });
 
 test('a live site has robots.txt, a sitemap and a not-found page', async () => {

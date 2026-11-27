@@ -116,11 +116,17 @@ by the app. It reads the app's database and never writes to it.
   frame as the editor's preview, as static HTML with the stylesheet inlined
   (`sites/src/site.css`, built by `npm run sites:css`). No scripts run, so
   "Back to top" isn't on live sites.
-- **States.** A handle nobody has says it's free and links to make a site.
-  A site never published says it isn't live yet; one taken offline or
-  paused says it isn't available; a deleted one answers 410. None of these
-  are cached or indexed. A path the site doesn't have says so and links
-  home.
+- **States.** A handle nobody has says it's free and links to make a site,
+  with the name filled in. A name kept for Levuche, or an address no handle
+  could have (too short, two levels deep), says there's no page there. A
+  site never published says it isn't live yet; one taken offline or paused
+  says it isn't available; a deleted one answers 410. None of these are
+  cached or indexed. A path the site doesn't have says so and links home.
+  When answering fails, the visitor gets a "Something went wrong" page with
+  Try again, not bare text. Each of these pages carries the Levuche
+  wordmark, linked to levuche.com.
+- **http.** `.page` is on browsers' HSTS preload list, so browsers only
+  ever open `https://` addresses on it.
 - **Speed.** Each version is drawn once per data centre and kept in the
   Cache API under its version number, so a publish or a rollback never
   needs a purge. Browsers keep it with an ETag of the version.

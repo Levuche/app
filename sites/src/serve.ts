@@ -9,6 +9,7 @@ import type {
   SiteSnapshot,
   SiteStatus,
 } from '../../src/lib/db.ts';
+import { RESERVED_HANDLES } from '../../src/lib/handle.ts';
 import { isApex, locate, type Located, type SitesConfig } from './locate.ts';
 import {
   inAppBrowser,
@@ -44,7 +45,9 @@ export type Missing =
   /** The site was deleted. */
   | 'removed'
   /** The site is live, but has no page at this path. */
-  | 'no-page';
+  | 'no-page'
+  /** Something broke while answering. */
+  | 'error';
 
 export type InApp = ReturnType<typeof inAppBrowser>;
 
@@ -97,7 +100,8 @@ export async function findSite(
       liveVersion: number | null;
       publishedAt: string | null;
     }>();
-  if (!row) return { kind: 'free' };
+  // Names kept for Levuche in code can't be claimed, so they aren't free.
+  if (!row) return { kind: RESERVED_HANDLES.has(handle) ? 'none' : 'free' };
   if (row.kind === 'reserved') return { kind: 'none' };
   if (row.kind === 'held' || !row.siteId || !row.status)
     return { kind: 'removed' };
@@ -131,6 +135,7 @@ const MISSING_STATUS: Record<Missing, number> = {
   paused: 404,
   removed: 410,
   'no-page': 404,
+  error: 500,
 };
 
 function headers(
@@ -149,6 +154,48 @@ function headers(
 }
 
 const NO_CACHE = { 'Cache-Control': 'no-store' };
+
+const appUrl = (env: SitesEnv) =>
+  (env.APP_URL || DEFAULT_APP).replace(/\/+$/, '');
+
+/** A request that isn't for any one site, for the pages that say so. */
+const nowhere = (url: URL): Located => ({
+  handle: '',
+  path: '',
+  base: url.origin,
+});
+
+/**
+ * The page a visitor sees when answering failed: drawn like the other
+ * Levuche pages, with plain text only if drawing it fails too.
+ */
+export async function failed(
+  request: Request,
+  env: SitesEnv,
+  render: Renderer
+): Promise<Response> {
+  const extra = { ...NO_CACHE, 'X-Robots-Tag': 'noindex, nofollow' };
+  const head = request.method === 'HEAD';
+  try {
+    const url = new URL(request.url);
+    const html = await render.missing({
+      why: 'error',
+      site: nowhere(url),
+      inApp: inAppBrowser(request.headers.get('User-Agent')),
+      url: url.href,
+      app: appUrl(env),
+    });
+    return new Response(head ? null : html, {
+      status: 500,
+      headers: headers(env, 'text/html; charset=utf-8', extra),
+    });
+  } catch {
+    return new Response(
+      head ? null : 'Something went wrong. Try again in a moment.',
+      { status: 500, headers: headers(env, 'text/plain; charset=utf-8', extra) }
+    );
+  }
+}
 
 /** The answer to one request to the sites Worker. */
 export async function serve(
@@ -170,6 +217,8 @@ export async function serve(
   if (isApex(url, env)) return Response.redirect('https://levuche.com/', 301);
 
   const noindex = env.SITES_NOINDEX === 'true';
+  const inApp = inAppBrowser(request.headers.get('User-Agent'));
+  const app = appUrl(env);
   const site = locate(url, env);
   if (!site) {
     if (url.pathname === '/robots.txt')
@@ -178,15 +227,24 @@ export async function serve(
         200,
         headers(env, 'text/plain; charset=utf-8')
       );
+    // An address no handle could have (too short, two levels deep): the
+    // same page as a name kept back, rather than bare text.
     return answer(
-      'Not found',
+      await render.missing({
+        why: 'none',
+        site: nowhere(url),
+        inApp,
+        url: url.href,
+        app,
+      }),
       404,
-      headers(env, 'text/plain; charset=utf-8', NO_CACHE)
+      headers(env, 'text/html; charset=utf-8', {
+        ...NO_CACHE,
+        'X-Robots-Tag': 'noindex, nofollow',
+      })
     );
   }
 
-  const inApp = inAppBrowser(request.headers.get('User-Agent'));
-  const app = (env.APP_URL || DEFAULT_APP).replace(/\/+$/, '');
   const state = await findSite(env.DB, site.handle);
   const live =
     state.kind === 'site' &&
