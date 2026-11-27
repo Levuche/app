@@ -78,7 +78,8 @@ sites answer in production:
 
 `next.config.ts` sends a Content-Security-Policy with every response,
 allowing only the app's own origin, the Buildbase API, Stripe's card fields
-(Buildbase's billing screens) and YouTube's privacy-mode player. It is
+(Buildbase's billing screens), YouTube's privacy-mode player and Cloudflare
+Web Analytics (the beacon Cloudflare adds to the page). It is
 enforced only on app.levuche.com; app-dev, previews and `npm run dev` send
 it as report-only. Browsers report what it blocks, or would block, to
 `/api/csp-report`, which writes one `csp-violation` line per report to the

@@ -23,6 +23,15 @@ const stripe = {
 };
 
 /**
+ * Cloudflare Web Analytics, which Cloudflare adds to app.levuche.com's pages
+ * itself: the beacon script, and the host it sends page views to.
+ */
+const cloudflareAnalytics = {
+  script: 'https://static.cloudflareinsights.com',
+  connect: 'https://cloudflareinsights.com',
+};
+
+/**
  * The Content-Security-Policy: only the hosts the app needs. Next.js and
  * next-themes put small scripts and styles inline, and Buildbase's screens
  * style themselves inline, so those stay allowed. Creators' pictures and
@@ -32,11 +41,11 @@ const stripe = {
  */
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' ${stripe.script}`,
+  `script-src 'self' 'unsafe-inline' ${stripe.script} ${cloudflareAnalytics.script}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  `connect-src 'self' ${buildbaseApi} ${stripe.connect}`,
+  `connect-src 'self' ${buildbaseApi} ${stripe.connect} ${cloudflareAnalytics.connect}`,
   `frame-src 'self' https://www.youtube-nocookie.com ${stripe.frame}`,
   "object-src 'none'",
   "base-uri 'self'",
